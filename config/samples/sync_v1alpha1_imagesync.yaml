@@ -1,0 +1,12 @@
+apiVersion: sync.controller.rkgcloud.com/v1alpha1
+kind: ImageSync
+metadata:
+  labels:
+    app.kubernetes.io/name: imagesync
+    app.kubernetes.io/instance: imagesync-sample
+    app.kubernetes.io/part-of: sync-controller
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: sync-controller
+  name: imagesync-sample
+spec:
+  # TODO(user): Add fields here
