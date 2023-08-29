@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches:
+    - main
+    - '!dependabot/**'
+    tags:
+    - '**'
+  pull_request: {}
+
+jobs:
+
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: actions/setup-go@v4
+      with:
+        go-version-file: "go.mod"
+    - name: Generate
+      run: |
+        set -o errexit
+        set -o nounset
+        set -o pipefail
+        
+        make manifests generate
+        git diff --exit-code
+    - name: Test
+      run: make test

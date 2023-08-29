@@ -18,45 +18,150 @@ package sync
 
 import (
 	"context"
+	"fmt"
 
-	"k8s.io/apimachinery/pkg/runtime"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
+	"github.com/go-logr/logr"
+	"github.com/google/go-containerregistry/pkg/authn/k8schain"
+	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
+	"github.com/vmware-labs/reconciler-runtime/reconcilers"
+	corev1 "k8s.io/api/core/v1"
+	apierrs "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	syncv1alpha1 "github.com/rkgcloud/sync-controller/api/sync/v1alpha1"
 )
 
 // ImageSyncReconciler reconciles a ImageSync object
-type ImageSyncReconciler struct {
-	client.Client
-	Scheme *runtime.Scheme
+const SourceImagePullSecretsStashKey reconcilers.StashKey = syncv1alpha1.Group + "/source-image-pull-secrets"
+const SourceImageRefStashKey reconcilers.StashKey = syncv1alpha1.Group + "/source-image-ref"
+
+// +kubebuilder:rbac:groups=sync.controller.rkgcloud.com,resources=imagesyncs,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=sync.controller.rkgcloud.com,resources=imagesyncs/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=core,resources=events,verbs=get;list;watch;create;update;patch;delete
+
+// ImageSyncReconciler reconciles a ImageSync object
+func ImageSyncReconciler(c reconcilers.Config) *reconcilers.ResourceReconciler[*syncv1alpha1.ImageSync] {
+	return &reconcilers.ResourceReconciler[*syncv1alpha1.ImageSync]{
+		Reconciler: &reconcilers.Sequence[*syncv1alpha1.ImageSync]{
+			ImageSyncSourceSecretSyncReconciler(),
+			ImageSyncSourceImageReconciler(),
+		},
+		Config: c,
+	}
 }
 
-//+kubebuilder:rbac:groups=sync.controller.rkgcloud.com,resources=imagesyncs,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=sync.controller.rkgcloud.com,resources=imagesyncs/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=sync.controller.rkgcloud.com,resources=imagesyncs/finalizers,verbs=update
+// +kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch
+// +kubebuilder:rbac:groups=core,resources=serviceaccounts,verbs=get;list;watch
 
-// Reconcile is part of the main kubernetes reconciliation loop which aims to
-// move the current state of the cluster closer to the desired state.
-// TODO(user): Modify the Reconcile function to compare the state specified by
-// the ImageSync object against the actual cluster state, and then
-// perform operations to make the cluster state reflect the state specified by
-// the user.
-//
-// For more details, check Reconcile and its Result here:
-// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.15.0/pkg/reconcile
-func (r *ImageSyncReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+func ImageSyncSourceSecretSyncReconciler() reconcilers.SubReconciler[*syncv1alpha1.ImageSync] {
+	return &reconcilers.SyncReconciler[*syncv1alpha1.ImageSync]{
+		Name: "ImageSyncSourceSecretSyncReconciler",
+		Sync: func(ctx context.Context, resource *syncv1alpha1.ImageSync) error {
+			c := reconcilers.RetrieveConfigOrDie(ctx)
 
-	// TODO(user): your logic here
+			pullSecretNames := sets.NewString()
 
-	return ctrl.Result{}, nil
+			for _, ps := range resource.Spec.SourceImage.SecretRef {
+				pullSecretNames.Insert(ps.Name)
+			}
+
+			// lookup service account
+			serviceAccountName := resource.Spec.SourceImage.ServiceAccountName
+			serviceAccount := corev1.ServiceAccount{}
+			err := c.TrackAndGet(ctx, types.NamespacedName{Namespace: resource.Namespace, Name: serviceAccountName}, &serviceAccount)
+			if err != nil {
+				if apierrs.IsNotFound(err) {
+					resource.ManageConditions().MarkFalse(syncv1alpha1.ImageSyncConditionSourceImageResolved, "ServiceAccountMissing", "ServiceAccount %q not found in namespace %q", serviceAccountName, resource.Namespace)
+					return nil
+				}
+				return err
+			}
+
+			for _, ips := range serviceAccount.ImagePullSecrets {
+				pullSecretNames.Insert(ips.Name)
+			}
+
+			// lookup image pull secrets
+			imagePullSecrets := make([]corev1.Secret, len(pullSecretNames))
+			for i, imagePullSecretName := range pullSecretNames.List() {
+				imagePullSecret := corev1.Secret{}
+				err := c.TrackAndGet(ctx, types.NamespacedName{Namespace: resource.Namespace, Name: imagePullSecretName}, &imagePullSecret)
+				if err != nil {
+					if apierrs.IsNotFound(err) {
+						resource.ManageConditions().MarkFalse(syncv1alpha1.ImageSyncConditionSourceImageResolved, "SecretMissing", "Secret %q not found in namespace %q", imagePullSecretName, resource.Namespace)
+						return nil
+					}
+					return err
+				}
+				imagePullSecrets[i] = imagePullSecret
+			}
+
+			StashSourceImagePullSecrets(ctx, imagePullSecrets)
+
+			return nil
+		},
+	}
 }
 
-// SetupWithManager sets up the controller with the Manager.
-func (r *ImageSyncReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
-		For(&syncv1alpha1.ImageSync{}).
-		Complete(r)
+func ImageSyncSourceImageReconciler() reconcilers.SubReconciler[*syncv1alpha1.ImageSync] {
+	return &reconcilers.SyncReconciler[*syncv1alpha1.ImageSync]{
+		Name: "ImageSyncSourceImageReconciler",
+		Sync: func(ctx context.Context, resource *syncv1alpha1.ImageSync) error {
+			// c := reconcilers.RetrieveConfigOrDie(ctx)
+			log := logr.FromContextOrDiscard(ctx)
+
+			_, err := name.NewDigest(resource.Spec.SourceImage.Image, name.WeakValidation)
+			if err == nil {
+				// image already resolved to digest
+				StashImageRef(ctx, resource.Spec.SourceImage.Image)
+				return nil
+			}
+
+			// resolve tagged image to digest
+			pullSecrets := RetrieveImagePullSecrets(ctx)
+			if pullSecrets == nil {
+				return nil
+			}
+			keychain, err := k8schain.NewFromPullSecrets(ctx, pullSecrets)
+			if err != nil {
+				return err
+			}
+			tag, err := name.NewTag(resource.Spec.SourceImage.Image, name.WeakValidation)
+			if err != nil {
+				resource.ManageConditions().MarkFalse(syncv1alpha1.ImageSyncConditionSourceImageResolved, "MalformedRepository", "Image name %q failed validation: %s", resource.Spec.SourceImage.Image, err)
+				return nil
+			}
+			image, err := remote.Head(tag, remote.WithContext(ctx), remote.WithAuthFromKeychain(keychain))
+			if err != nil {
+				log.Error(err, "unable to resolve image tag to a digest", "image", resource.Spec.SourceImage.Image)
+				resource.ManageConditions().MarkFalse(syncv1alpha1.ImageSyncConditionSourceImageResolved, "RemoteError", "Unable to resolve image with tag %q to a digest: %s", resource.Spec.SourceImage.Image, err)
+				return nil
+			}
+
+			StashImageRef(ctx, fmt.Sprintf("%s@%s", tag.Name(), image.Digest))
+			resource.Status.LastSyncTime = metav1.Now()
+			resource.ManageConditions().MarkTrue(syncv1alpha1.ImageSyncConditionSourceImageResolved, "Available", "")
+
+			return nil
+		},
+	}
+}
+
+func StashSourceImagePullSecrets(ctx context.Context, pullSecrets []corev1.Secret) {
+	reconcilers.StashValue(ctx, SourceImagePullSecretsStashKey, pullSecrets)
+}
+
+func StashImageRef(ctx context.Context, image string) {
+	reconcilers.StashValue(ctx, SourceImageRefStashKey, image)
+}
+
+func RetrieveImagePullSecrets(ctx context.Context) []corev1.Secret {
+	pullSecrets, ok := reconcilers.RetrieveValue(ctx, SourceImageRefStashKey).([]corev1.Secret)
+	if !ok {
+		return nil
+	}
+	return pullSecrets
 }
