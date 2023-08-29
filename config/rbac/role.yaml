@@ -5,6 +5,34 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - serviceaccounts
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
   - sync.controller.rkgcloud.com
   resources:
   - imagesyncs
@@ -16,12 +44,6 @@ rules:
   - patch
   - update
   - watch
-- apiGroups:
-  - sync.controller.rkgcloud.com
-  resources:
-  - imagesyncs/finalizers
-  verbs:
-  - update
 - apiGroups:
   - sync.controller.rkgcloud.com
   resources:

@@ -17,29 +17,76 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"github.com/vmware-labs/reconciler-runtime/apis"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
+type Image struct {
+	// Image is a reference to an image in a remote repository
+	Image string `json:"image"`
+
+	// SecretRef contains the names of the Kubernetes Secrets containing registry login
+	// information to resolve image metadata.
+	// +optional
+	SecretRef []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
+
+	// ServiceAccountName is the name of the Kubernetes ServiceAccount used to authenticate
+	// the image pull if the service account has attached pull secrets. For more information:
+	// https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#add-imagepullsecrets-to-a-service-account
+	// +optional
+	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+
+	// Insecure allows connecting to a non-TLS HTTP container registry.
+	// +optional
+	Insecure bool `json:"insecure,omitempty"`
+}
+
 // ImageSyncSpec defines the desired state of ImageSync
 type ImageSyncSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// +required
+	SourceImage *Image `json:"sourceImage,omitempty"`
 
-	// Foo is an example field of ImageSync. Edit imagesync_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	// IsBundleImage allows synchronizing bundle images.
+	// +optional
+	IsBundleImage bool `json:"isBundleImage,omitempty"`
+
+	// +required
+	DestinationImage *Image `json:"destinationImage,omitempty"`
+
+	// The timeout for remote OCI Repository operations like pulling, defaults to 60s.
+	// +kubebuilder:default="60s"
+	// +kubebuilder:validation:Type=string
+	// +kubebuilder:validation:Pattern="^([0-9]+(\\.[0-9]+)?(ms|s|m))+$"
+	// +optional
+	Timeout *metav1.Duration `json:"timeout,omitempty"`
 }
 
 // ImageSyncStatus defines the observed state of ImageSync
 type ImageSyncStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+
+	apis.Status `json:",inline"`
+
+	// URL is the destination link for the latest Artifact.
+	// +optional
+	URL string `json:"url,omitempty"`
+
+	// LastSyncTime to the destination repository
+	LastSyncTime metav1.Time `json:"lastSyncTime,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
+//+kubebuilder:printcolumn:name="Image",type=string,JSONPath=`.spec.image`
+//+kubebuilder:printcolumn:name="URL",type=string,JSONPath=`.status.url`
+//+kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
+//+kubebuilder:printcolumn:name="Reason",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].reason`
+//+kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 
 // ImageSync is the Schema for the imagesyncs API
 type ImageSync struct {

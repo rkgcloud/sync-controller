@@ -19,12 +19,14 @@ package main
 import (
 	"flag"
 	"os"
+	"time"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	"go.uber.org/zap/zapcore"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
+	"github.com/vmware-labs/reconciler-runtime/reconcilers"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -33,15 +35,17 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
+
 	syncv1alpha1 "github.com/rkgcloud/sync-controller/api/sync/v1alpha1"
 	synccontroller "github.com/rkgcloud/sync-controller/internal/controller/sync"
-	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	//+kubebuilder:scaffold:imports
 )
 
 var (
-	scheme   = runtime.NewScheme()
-	setupLog = ctrl.Log.WithName("setup")
+	scheme     = runtime.NewScheme()
+	setupLog   = ctrl.Log.WithName("setup")
+	syncPeriod = 10 * time.Hour
 )
 
 func init() {
@@ -52,6 +56,7 @@ func init() {
 }
 
 func main() {
+	ctx := ctrl.SetupSignalHandler()
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
@@ -99,10 +104,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&synccontroller.ImageSyncReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
+	if err = synccontroller.ImageSyncReconciler(
+		reconcilers.NewConfig(mgr, &syncv1alpha1.ImageSync{}, syncPeriod),
+	).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ImageSync")
 		os.Exit(1)
 	}
