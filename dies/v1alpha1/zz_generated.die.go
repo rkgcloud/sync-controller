@@ -501,7 +501,7 @@ func (d *ImageSyncSpecDie) DeepCopy() *ImageSyncSpecDie {
 	}
 }
 
-func (d *ImageSyncSpecDie) SourceImage(v *syncv1alpha1.Image) *ImageSyncSpecDie {
+func (d *ImageSyncSpecDie) SourceImage(v syncv1alpha1.Image) *ImageSyncSpecDie {
 	return d.DieStamp(func(r *syncv1alpha1.ImageSyncSpec) {
 		r.SourceImage = v
 	})
@@ -514,7 +514,7 @@ func (d *ImageSyncSpecDie) IsBundleImage(v bool) *ImageSyncSpecDie {
 	})
 }
 
-func (d *ImageSyncSpecDie) DestinationImage(v *syncv1alpha1.Image) *ImageSyncSpecDie {
+func (d *ImageSyncSpecDie) DestinationImage(v syncv1alpha1.Image) *ImageSyncSpecDie {
 	return d.DieStamp(func(r *syncv1alpha1.ImageSyncSpec) {
 		r.DestinationImage = v
 	})
