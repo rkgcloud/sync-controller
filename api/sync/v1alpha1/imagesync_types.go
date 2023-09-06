@@ -27,6 +27,7 @@ import (
 
 type Image struct {
 	// Image is a reference to an image in a remote repository
+	// +required
 	Image string `json:"image"`
 
 	// SecretRef contains the names of the Kubernetes Secrets containing registry login
@@ -48,14 +49,14 @@ type Image struct {
 // ImageSyncSpec defines the desired state of ImageSync
 type ImageSyncSpec struct {
 	// +required
-	SourceImage *Image `json:"sourceImage,omitempty"`
+	SourceImage Image `json:"sourceImage,omitempty"`
 
 	// IsBundleImage allows synchronizing bundle images.
 	// +optional
 	IsBundleImage bool `json:"isBundleImage,omitempty"`
 
 	// +required
-	DestinationImage *Image `json:"destinationImage,omitempty"`
+	DestinationImage Image `json:"destinationImage,omitempty"`
 
 	// The timeout for remote OCI Repository operations like pulling, defaults to 60s.
 	// +kubebuilder:default="60s"
