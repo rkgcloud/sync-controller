@@ -10,4 +10,6 @@ metadata:
   name: imagesync-sample
 spec:
   sourceImage:
-    image: scothis/petclinic
+    image: gcr.io/bazinga/app-bundle:latest
+  destinationImage:
+    image: bazinga/bundle-test

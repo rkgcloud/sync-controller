@@ -40,12 +40,15 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .spec.image
+    - jsonPath: .spec.sourceImage.image
       name: Image
       type: string
-    - jsonPath: .status.url
+    - jsonPath: .spec.destinationImage.image
       name: URL
       type: string
+    - jsonPath: .spec.isBundleImage
+      name: Bundle
+      type: boolean
     - jsonPath: .status.conditions[?(@.type=="Ready")].status
       name: Ready
       type: string
