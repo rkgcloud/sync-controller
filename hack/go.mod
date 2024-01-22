@@ -6,7 +6,7 @@ require (
 	dies.dev/diegen v0.9.0
 	github.com/get-woke/woke v0.19.0
 	github.com/google/ko v0.15.1
-	github.com/vmware-tanzu/carvel-kapp v0.59.2
+	github.com/vmware-tanzu/carvel-kapp v0.60.0
 	github.com/vmware-tanzu/carvel-ytt v0.46.3
 	golang.org/x/tools v0.17.0
 	sigs.k8s.io/controller-tools v0.13.0
@@ -103,7 +103,7 @@ require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/k14s/difflib v0.0.0-20201117154628-0c031775bf57 // indirect
+	github.com/k14s/difflib v0.0.0-20240118055029-596a7a5585c3 // indirect
 	github.com/k14s/starlark-go v0.0.0-20200720175618-3a5c849cc368 // indirect
 	github.com/k14s/ytt v0.36.0 // indirect
 	github.com/klauspost/compress v1.17.2 // indirect
@@ -170,11 +170,11 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gotest.tools/v3 v3.1.0 // indirect
-	k8s.io/api v0.28.3 // indirect
+	k8s.io/api v0.29.0 // indirect
 	k8s.io/apiextensions-apiserver v0.28.0 // indirect
-	k8s.io/apimachinery v0.28.4 // indirect
-	k8s.io/client-go v0.28.3 // indirect
-	k8s.io/klog/v2 v2.100.1 // indirect
+	k8s.io/apimachinery v0.29.0 // indirect
+	k8s.io/client-go v0.29.0 // indirect
+	k8s.io/klog/v2 v2.110.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20231010175941-2dd684a91f00 // indirect
 	k8s.io/utils v0.0.0-20230726121419-3b25d923346b // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
@@ -182,6 +182,6 @@ require (
 	sigs.k8s.io/kustomize/api v0.16.0 // indirect
 	sigs.k8s.io/kustomize/cmd/config v0.13.0 // indirect
 	sigs.k8s.io/kustomize/kyaml v0.16.0 // indirect
-	sigs.k8s.io/structured-merge-diff/v4 v4.3.0 // indirect
+	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
