@@ -5,7 +5,7 @@ go 1.20
 require (
 	dies.dev v0.9.0
 	github.com/go-logr/logr v1.4.1
-	github.com/google/go-containerregistry v0.18.0
+	github.com/google/go-containerregistry v0.19.0
 	github.com/google/go-containerregistry/pkg/authn/k8schain v0.0.0-20230822174451-190ad0e4d556
 	github.com/vmware-labs/reconciler-runtime v0.16.0
 	go.uber.org/zap v1.26.0
