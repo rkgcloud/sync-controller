@@ -2,8 +2,8 @@ cloud.google.com/go/compute v1.20.1 h1:6aKEtlUiwEpJzM001l0yFkpXmUVXaN8W+fbkb2AZN
 cloud.google.com/go/compute v1.20.1/go.mod h1:4tCnrn48xsqlwSAiLf1HXMQk8CONslYbdiEZc9FEIbM=
 cloud.google.com/go/compute/metadata v0.2.3 h1:mg4jlk7mCAj6xXp9UJ4fjI9VUI5rubuGBW5aJ7UnBMY=
 cloud.google.com/go/compute/metadata v0.2.3/go.mod h1:VAV5nSsACxMJvgaAuX6Pk2AawlZn8kiOGuCv6gTkwuA=
-dies.dev v0.9.0 h1:PLt0wbGbnnK9W2dr8vL60UJkuF7HaYqtG96XRZ2zwmA=
-dies.dev v0.9.0/go.mod h1:8rGP4IOWJQh16VlDN4uEE6TnGS0XTEn6rNL1dr2FqKo=
+dies.dev v0.10.0 h1:HBbcL94hHXuxZHlmHjQFVRz2JmsErBinVjFKitP7deE=
+dies.dev v0.10.0/go.mod h1:F/ldZL0yRckmlltwtkA4q1GT4RwLqKmXzFZ7fuMEnd0=
 github.com/Azure/azure-sdk-for-go v68.0.0+incompatible h1:fcYLmCpyNYRnvJbPerq7U0hS+6+I79yEDJBqVNcqUzU=
 github.com/Azure/azure-sdk-for-go v68.0.0+incompatible/go.mod h1:9XXNKU+eRnpl9moKnB4QOLf1HestfXbmab5FXxiDBjc=
 github.com/Azure/go-autorest v14.2.0+incompatible h1:V5VMDjClD3GiElqLWO7mz2MxNAK/vTfRHdAubSIPRgs=
