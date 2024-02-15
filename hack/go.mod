@@ -3,7 +3,7 @@ module github.com/rkgcloud/sync-controller/hack
 go 1.19
 
 require (
-	dies.dev/diegen v0.9.0
+	dies.dev/diegen v0.10.0
 	github.com/get-woke/woke v0.19.0
 	github.com/google/ko v0.15.1
 	github.com/vmware-tanzu/carvel-kapp v0.60.0
