@@ -3,7 +3,7 @@ module github.com/rkgcloud/sync-controller
 go 1.20
 
 require (
-	dies.dev v0.10.0
+	dies.dev v0.10.1
 	github.com/go-logr/logr v1.4.1
 	github.com/google/go-containerregistry v0.19.0
 	github.com/google/go-containerregistry/pkg/authn/k8schain v0.0.0-20230822174451-190ad0e4d556
