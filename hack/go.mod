@@ -3,13 +3,13 @@ module github.com/rkgcloud/sync-controller/hack
 go 1.19
 
 require (
-	dies.dev/diegen v0.9.0
+	dies.dev/diegen v0.10.1
 	github.com/get-woke/woke v0.19.0
 	github.com/google/ko v0.15.2
 	github.com/vmware-tanzu/carvel-kapp v0.60.0
 	github.com/vmware-tanzu/carvel-ytt v0.47.0
 	golang.org/x/tools v0.19.0
-	sigs.k8s.io/controller-tools v0.13.0
+	sigs.k8s.io/controller-tools v0.14.0
 	sigs.k8s.io/kustomize/kustomize/v5 v5.3.0
 
 )
@@ -66,7 +66,7 @@ require (
 	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936 // indirect
 	github.com/emicklei/go-restful/v3 v3.11.0 // indirect
 	github.com/evanphx/json-patch/v5 v5.6.0 // indirect
-	github.com/fatih/color v1.15.0 // indirect
+	github.com/fatih/color v1.16.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/get-woke/fastwalk v1.0.0 // indirect
@@ -178,7 +178,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gotest.tools/v3 v3.1.0 // indirect
 	k8s.io/api v0.29.0 // indirect
-	k8s.io/apiextensions-apiserver v0.28.0 // indirect
+	k8s.io/apiextensions-apiserver v0.29.0 // indirect
 	k8s.io/apimachinery v0.29.2 // indirect
 	k8s.io/client-go v0.29.0 // indirect
 	k8s.io/klog/v2 v2.110.1 // indirect
