@@ -1,8 +1,8 @@
 package v1alpha1
 
 import (
-	diemetav1 "dies.dev/apis/meta/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	diemetav1 "reconciler.io/dies/apis/meta/v1"
 
 	syncv1alpha1 "github.com/rkgcloud/sync-controller/api/sync/v1alpha1"
 )
