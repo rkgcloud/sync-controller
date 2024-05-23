@@ -33,7 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"reconciler.io/runtime/reconcilers"
 
-	"github.com/vmware-tanzu/carvel-imgpkg/pkg/imgpkg/cmd"
+	"carvel.dev/imgpkg/pkg/imgpkg/cmd"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 

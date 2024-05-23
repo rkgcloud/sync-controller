@@ -1,6 +1,6 @@
 package internal
 
-import "github.com/vmware-tanzu/carvel-imgpkg/pkg/imgpkg/plainimage"
+import "carvel.dev/imgpkg/pkg/imgpkg/plainimage"
 
 // imgpkg logger
 
