@@ -17,9 +17,9 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"github.com/vmware-labs/reconciler-runtime/apis"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"reconciler.io/runtime/apis"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -83,8 +83,9 @@ type ImageSyncStatus struct {
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
-//+kubebuilder:printcolumn:name="Image",type=string,JSONPath=`.spec.image`
-//+kubebuilder:printcolumn:name="URL",type=string,JSONPath=`.status.url`
+//+kubebuilder:printcolumn:name="Image",type=string,JSONPath=`.spec.sourceImage.image`
+//+kubebuilder:printcolumn:name="URL",type=string,JSONPath=`.spec.destinationImage.image`
+//+kubebuilder:printcolumn:name="Bundle",type=boolean,JSONPath=`.spec.isBundleImage`
 //+kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 //+kubebuilder:printcolumn:name="Reason",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].reason`
 //+kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`

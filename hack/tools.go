@@ -21,12 +21,11 @@ limitations under the License.
 package tools
 
 import (
-	_ "dies.dev/diegen"
-	_ "github.com/get-woke/woke"
 	_ "github.com/google/ko"
 	_ "github.com/vmware-tanzu/carvel-kapp/cmd/kapp"
 	_ "github.com/vmware-tanzu/carvel-ytt/cmd/ytt"
 	_ "golang.org/x/tools/cmd/goimports"
+	_ "reconciler.io/dies/diegen"
 	_ "sigs.k8s.io/controller-tools/cmd/controller-gen"
 	_ "sigs.k8s.io/kustomize/kustomize/v5"
 )

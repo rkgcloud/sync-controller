@@ -19,18 +19,21 @@ package sync
 import (
 	"context"
 	"fmt"
+	"net/url"
 
+	"github.com/cppforlife/go-cli-ui/ui"
 	"github.com/go-logr/logr"
 	"github.com/google/go-containerregistry/pkg/authn/k8schain"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
-	"github.com/vmware-labs/reconciler-runtime/reconcilers"
 	corev1 "k8s.io/api/core/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"reconciler.io/runtime/reconcilers"
 
+	"carvel.dev/imgpkg/pkg/imgpkg/cmd"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 
@@ -38,7 +41,7 @@ import (
 )
 
 // ImageSyncReconciler reconciles a ImageSync object
-const SourceImagePullSecretsStashKey reconcilers.StashKey = syncv1alpha1.Group + "/source-image-pull-secrets"
+const SourceSecretsStashKey reconcilers.StashKey = syncv1alpha1.Group + "/source-secret"
 const SourceImageRefStashKey reconcilers.StashKey = syncv1alpha1.Group + "/source-image-ref"
 const DestinationSecretsStashKey reconcilers.StashKey = syncv1alpha1.Group + "/destination-secret"
 
@@ -50,8 +53,10 @@ const DestinationSecretsStashKey reconcilers.StashKey = syncv1alpha1.Group + "/d
 func ImageSyncReconciler(c reconcilers.Config) *reconcilers.ResourceReconciler[*syncv1alpha1.ImageSync] {
 	return &reconcilers.ResourceReconciler[*syncv1alpha1.ImageSync]{
 		Reconciler: &reconcilers.Sequence[*syncv1alpha1.ImageSync]{
-			ImageSyncSourceSecretSyncReconciler(),
-			ImageSyncSourceImageReconciler(),
+			SourceSecretSyncReconciler(),
+			DestinationSecretSyncReconciler(),
+			SourceImageSyncReconciler(),
+			SynchronizeImageReconciler(),
 		},
 		Config: c,
 	}
@@ -60,25 +65,22 @@ func ImageSyncReconciler(c reconcilers.Config) *reconcilers.ResourceReconciler[*
 // +kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch
 // +kubebuilder:rbac:groups=core,resources=serviceaccounts,verbs=get;list;watch
 
-func ImageSyncSourceSecretSyncReconciler() reconcilers.SubReconciler[*syncv1alpha1.ImageSync] {
+func SourceSecretSyncReconciler() reconcilers.SubReconciler[*syncv1alpha1.ImageSync] {
 	return &reconcilers.SyncReconciler[*syncv1alpha1.ImageSync]{
-		Name: "ImageSyncSourceSecretSyncReconciler",
+		Name: "SecretSyncReconciler",
 		Sync: func(ctx context.Context, resource *syncv1alpha1.ImageSync) error {
 			c := reconcilers.RetrieveConfigOrDie(ctx)
 			log := logr.FromContextOrDiscard(ctx)
-			log.Info("ImageSyncSourceSecretSyncReconciler", "sub-reconciler", "ImageSyncSourceSecretSyncReconciler")
 
-			pullSecretNames := sets.NewString()
-
+			sourceSecretNames := sets.NewString()
 			for _, ps := range resource.Spec.SourceImage.SecretRef {
-				pullSecretNames.Insert(ps.Name)
+				sourceSecretNames.Insert(ps.Name)
 			}
 
-			// lookup source service account
+			// lookup source service account. NOTE: don't use Default SA.
+			// Default SA is ambiguous when using as source/dest secret.
+			// We will go with the defined SA only.
 			sourceServiceAccountName := resource.Spec.SourceImage.ServiceAccountName
-			if sourceServiceAccountName == "" {
-				sourceServiceAccountName = "default"
-			}
 			serviceAccount := corev1.ServiceAccount{}
 			err := c.TrackAndGet(ctx, types.NamespacedName{Namespace: resource.Namespace, Name: sourceServiceAccountName}, &serviceAccount)
 			if err != nil {
@@ -86,51 +88,94 @@ func ImageSyncSourceSecretSyncReconciler() reconcilers.SubReconciler[*syncv1alph
 					resource.ManageConditions().MarkFalse(syncv1alpha1.ImageSyncConditionSourceImageResolved, "ServiceAccountMissing", "ServiceAccount %q not found in namespace %q", sourceServiceAccountName, resource.Namespace)
 					return nil
 				}
+				log.Error(err, "unable to track source service account", sourceServiceAccountName, fmt.Sprintf("%s-%s", resource.Namespace, resource.Name))
 				return err
 			}
 
 			for _, ips := range serviceAccount.ImagePullSecrets {
-				pullSecretNames.Insert(ips.Name)
+				sourceSecretNames.Insert(ips.Name)
 			}
 
-			// lookup destination service acount
+			imagePullSecrets := make([]corev1.Secret, len(sourceSecretNames))
+			for i, secretName := range sourceSecretNames.List() {
+				srcSecret := corev1.Secret{}
+				err := c.TrackAndGet(ctx, types.NamespacedName{Namespace: resource.Namespace, Name: secretName}, &srcSecret)
+				if err != nil {
+					if apierrs.IsNotFound(err) {
+						resource.ManageConditions().MarkFalse(syncv1alpha1.ImageSyncConditionSourceImageResolved, "SecretMissing", "Secret %q not found in namespace %q", secretName, resource.Namespace)
+						return nil
+					}
+					log.Error(err, "unable to track source secret", secretName, fmt.Sprintf("%s-%s", resource.Namespace, resource.Name))
+					return err
+				}
+				imagePullSecrets[i] = srcSecret
+			}
+
+			stashSecrets(ctx, SourceSecretsStashKey, imagePullSecrets)
+			return nil
+		},
+
+		Setup: func(ctx context.Context, mgr controllerruntime.Manager, bldr *builder.Builder) error {
+			// register an informer to watch Secret's metadata only. This reduces the cache size in memory.
+			bldr.Watches(&corev1.Secret{}, reconcilers.EnqueueTracked(ctx), builder.OnlyMetadata)
+			// register an informer to watch ServiceAccounts
+			bldr.Watches(&corev1.ServiceAccount{}, reconcilers.EnqueueTracked(ctx))
+
+			return nil
+		},
+	}
+}
+
+// +kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch
+// +kubebuilder:rbac:groups=core,resources=serviceaccounts,verbs=get;list;watch
+
+func DestinationSecretSyncReconciler() reconcilers.SubReconciler[*syncv1alpha1.ImageSync] {
+	return &reconcilers.SyncReconciler[*syncv1alpha1.ImageSync]{
+		Name: "DestinationSecretSyncReconciler",
+		Sync: func(ctx context.Context, resource *syncv1alpha1.ImageSync) error {
+			c := reconcilers.RetrieveConfigOrDie(ctx)
+			log := logr.FromContextOrDiscard(ctx)
+
+			destSecretNames := sets.NewString()
+			for _, ps := range resource.Spec.DestinationImage.SecretRef {
+				destSecretNames.Insert(ps.Name)
+			}
+
+			// lookup source service account. NOTE: don't use Default SA.
+			// Default SA is ambiguous when using as source/dest secret.
+			// We will go with the defined SA only.
 			destServiceAccountName := resource.Spec.DestinationImage.ServiceAccountName
-			if destServiceAccountName == "" && sourceServiceAccountName != "default" {
-				destServiceAccountName = "default"
-			}
-
-			destServiceAccount := corev1.ServiceAccount{}
-			errx := c.TrackAndGet(ctx, types.NamespacedName{Namespace: resource.Namespace, Name: destServiceAccountName}, &destServiceAccount)
-			if errx != nil {
+			serviceAccount := corev1.ServiceAccount{}
+			err := c.TrackAndGet(ctx, types.NamespacedName{Namespace: resource.Namespace, Name: destServiceAccountName}, &serviceAccount)
+			if err != nil {
 				if apierrs.IsNotFound(err) {
-					resource.ManageConditions().MarkFalse(syncv1alpha1.ImageSyncConditionSourceImageResolved, "ServiceAccountMissing", "ServiceAccount %q not found in namespace %q", destServiceAccountName, resource.Namespace)
+					resource.ManageConditions().MarkFalse(syncv1alpha1.ImageSyncConditionDestinationImageResolved, "ServiceAccountMissing", "ServiceAccount %q not found in namespace %q", destServiceAccountName, resource.Namespace)
 					return nil
 				}
+				log.Error(err, "unable to track destination service account", destServiceAccountName, fmt.Sprintf("%s-%s", resource.Namespace, resource.Name))
 				return err
 			}
 
-			for _, ds := range destServiceAccount.ImagePullSecrets {
-				pullSecretNames.Insert(ds.Name)
+			for _, ips := range serviceAccount.ImagePullSecrets {
+				destSecretNames.Insert(ips.Name)
 			}
 
-			log.Info("ImageSyncSourceSecretSyncReconciler", "pullSecretNames len", len(pullSecretNames))
-
-			// lookup image pull secrets
-			imagePullSecrets := make([]corev1.Secret, len(pullSecretNames))
-			for i, imagePullSecretName := range pullSecretNames.List() {
-				imagePullSecret := corev1.Secret{}
-				err := c.TrackAndGet(ctx, types.NamespacedName{Namespace: resource.Namespace, Name: imagePullSecretName}, &imagePullSecret)
+			imagePullSecrets := make([]corev1.Secret, len(destSecretNames))
+			for i, secretName := range destSecretNames.List() {
+				srcSecret := corev1.Secret{}
+				err := c.TrackAndGet(ctx, types.NamespacedName{Namespace: resource.Namespace, Name: secretName}, &srcSecret)
 				if err != nil {
 					if apierrs.IsNotFound(err) {
-						resource.ManageConditions().MarkFalse(syncv1alpha1.ImageSyncConditionSourceImageResolved, "SecretMissing", "Secret %q not found in namespace %q", imagePullSecretName, resource.Namespace)
+						resource.ManageConditions().MarkFalse(syncv1alpha1.ImageSyncConditionDestinationImageResolved, "SecretMissing", "Secret %q not found in namespace %q", secretName, resource.Namespace)
 						return nil
 					}
+					log.Error(err, "unable to track destination secret", secretName, fmt.Sprintf("%s-%s", resource.Namespace, resource.Name))
 					return err
 				}
-				imagePullSecrets[i] = imagePullSecret
+				imagePullSecrets[i] = srcSecret
 			}
 
-			stashSecrets(ctx, imagePullSecrets)
+			stashSecrets(ctx, DestinationSecretsStashKey, imagePullSecrets)
 
 			return nil
 		},
@@ -146,29 +191,27 @@ func ImageSyncSourceSecretSyncReconciler() reconcilers.SubReconciler[*syncv1alph
 	}
 }
 
-func ImageSyncSourceImageReconciler() reconcilers.SubReconciler[*syncv1alpha1.ImageSync] {
+func SourceImageSyncReconciler() reconcilers.SubReconciler[*syncv1alpha1.ImageSync] {
 	return &reconcilers.SyncReconciler[*syncv1alpha1.ImageSync]{
-		Name: "ImageSyncSourceImageReconciler",
+		Name: "SourceImageSyncReconciler",
 		Sync: func(ctx context.Context, resource *syncv1alpha1.ImageSync) error {
 			log := logr.FromContextOrDiscard(ctx)
-			log.Info("ImageSyncSourceImageReconciler", "image", resource.Spec.SourceImage.Image)
+			log.Info("SourceImageSyncReconciler", "image", resource.Spec.SourceImage.Image)
 
 			_, err := name.NewDigest(resource.Spec.SourceImage.Image, name.WeakValidation)
 			if err == nil {
 				// image already resolved to digest
-				stashImageRef(ctx, resource.Spec.SourceImage.Image)
-				log.Info("ImageSyncSourceImageReconciler", "skipping", "image already resolved to digest")
+				stashImageRef(ctx, SourceImageRefStashKey, resource.Spec.SourceImage.Image)
+				log.Info("SourceImageSyncReconciler", "skipping", "image already resolved to digest")
 				return nil
 			}
 
-			// resolve tagged image to digest
-			pullSecrets := retrieveSecrets(ctx)
-			if pullSecrets == nil {
-				log.Info("ImageSyncSourceImageReconciler", "pullSecrets", "no pull secrets")
-				// return nil
-			}
+			// resolve source image to digest
+			pullSecrets := retrieveSecrets(ctx, SourceSecretsStashKey)
+
 			keychain, err := k8schain.NewFromPullSecrets(ctx, pullSecrets)
 			if err != nil {
+				log.Error(err, "unable to process source image secret", "secret", resource.Spec.SourceImage.Image)
 				return err
 			}
 			tag, err := name.NewTag(resource.Spec.SourceImage.Image, name.WeakValidation)
@@ -183,8 +226,8 @@ func ImageSyncSourceImageReconciler() reconcilers.SubReconciler[*syncv1alpha1.Im
 				return nil
 			}
 
-			stashImageRef(ctx, fmt.Sprintf("%s@%s", tag.Name(), image.Digest))
-			log.Info("ImageSyncSourceImageReconciler", "resolved", fmt.Sprintf("%s@%s", tag.Name(), image.Digest))
+			stashImageRef(ctx, SourceImageRefStashKey, fmt.Sprintf("%s@%s", tag.Name(), image.Digest))
+			log.Info("SourceImageSyncReconciler", "resolved", fmt.Sprintf("%s@%s", tag.Name(), image.Digest))
 			resource.Status.LastSyncTime = metav1.Now()
 			resource.ManageConditions().MarkTrue(syncv1alpha1.ImageSyncConditionSourceImageResolved, "Available", "")
 
@@ -193,18 +236,78 @@ func ImageSyncSourceImageReconciler() reconcilers.SubReconciler[*syncv1alpha1.Im
 	}
 }
 
-func stashSecrets(ctx context.Context, pullSecrets []corev1.Secret) {
-	reconcilers.StashValue(ctx, SourceImagePullSecretsStashKey, pullSecrets)
+func SynchronizeImageReconciler() reconcilers.SubReconciler[*syncv1alpha1.ImageSync] {
+	return &reconcilers.SyncReconciler[*syncv1alpha1.ImageSync]{
+		Name: "SynchronizeImageReconciler",
+		Sync: func(ctx context.Context, resource *syncv1alpha1.ImageSync) error {
+			log := logr.FromContextOrDiscard(ctx)
+
+			// resolve tagged image to digest
+			// pullSecrets := retrieveSecrets(ctx, SourceSecretsStashKey)
+			// if pullSecrets == nil {
+			// 	log.Info("SynchronizeImageReconciler", "pullSecrets", "no secrets found")
+			// 	// return nil
+			// }
+			// Use carvel.dev imgpkg to copy the image to the target repository
+
+			// Example
+			// destimation repo: rkamaldocker/bundle-test
+			// Source Bundle: "gcr.io/tanzucliappdev/source-controller-bundle:latest"
+			confUI := ui.NewConfUI(ui.NewNoopLogger())
+			defer confUI.Flush()
+			cmd.NewCopyOptions(confUI)
+			dest, err := getRepository(resource.Spec.DestinationImage.Image)
+			if err != nil {
+				return err
+			}
+			log.Info("SynchronizeImageReconciler", "copy to dest: ", dest)
+			imgpkgCopy := cmd.CopyOptions{
+				BundleFlags: cmd.BundleFlags{
+					Bundle: resource.Spec.SourceImage.Image,
+				},
+				Concurrency: 5,
+				RepoDst:     resource.Spec.DestinationImage.Image,
+			}
+
+			err = imgpkgCopy.Run()
+			if err != nil {
+				// log.Error(err, "error copying bundle image", "image", resource.Spec.SourceImage.Image)
+				resource.Status.LastSyncTime = metav1.Now()
+				resource.ManageConditions().MarkFalse(syncv1alpha1.ImageSyncConditionDestinationImageResolved, "Error", "Unable to copy bundle image %s", resource.Spec.SourceImage.Image)
+				return nil
+			}
+
+			// update subreconciler status
+			log.Info("SynchronizeImageReconciler", "resolved", fmt.Sprintf("%s@%s", "tag.Name()", "image.Digest"))
+			resource.Status.LastSyncTime = metav1.Now()
+			resource.ManageConditions().MarkTrue(syncv1alpha1.ImageSyncConditionDestinationImageResolved, "Synchronized", "")
+
+			return nil
+			// NOTE: Run is working. Need to pass auth
+		},
+	}
 }
 
-func stashImageRef(ctx context.Context, image string) {
-	reconcilers.StashValue(ctx, SourceImageRefStashKey, image)
+func stashSecrets(ctx context.Context, key reconcilers.StashKey, pullSecrets []corev1.Secret) {
+	reconcilers.StashValue(ctx, key, pullSecrets)
 }
 
-func retrieveSecrets(ctx context.Context) []corev1.Secret {
-	pullSecrets, ok := reconcilers.RetrieveValue(ctx, SourceImageRefStashKey).([]corev1.Secret)
+func stashImageRef(ctx context.Context, key reconcilers.StashKey, image string) {
+	reconcilers.StashValue(ctx, key, image)
+}
+
+func retrieveSecrets(ctx context.Context, key reconcilers.StashKey) []corev1.Secret {
+	pullSecrets, ok := reconcilers.RetrieveValue(ctx, key).([]corev1.Secret)
 	if !ok {
 		return nil
 	}
 	return pullSecrets
+}
+
+func getRepository(repo string) (string, error) {
+	u, err := url.Parse(repo)
+	if err != nil {
+		return "", err
+	}
+	return u.String(), nil
 }

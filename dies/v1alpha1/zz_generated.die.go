@@ -27,14 +27,14 @@ import (
 	osx "os"
 	reflectx "reflect"
 
-	v1 "dies.dev/apis/meta/v1"
-	apis "github.com/vmware-labs/reconciler-runtime/apis"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	unstructured "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	jsonpath "k8s.io/client-go/util/jsonpath"
+	v1 "reconciler.io/dies/apis/meta/v1"
+	apis "reconciler.io/runtime/apis"
 	yaml "sigs.k8s.io/yaml"
 
 	syncv1alpha1 "github.com/rkgcloud/sync-controller/api/sync/v1alpha1"
@@ -918,14 +918,20 @@ func (d *ImageDie) Image(v string) *ImageDie {
 	})
 }
 
-// SecretRef contains the names of the Kubernetes Secrets containing registry login information to resolve image metadata.
+// SecretRef contains the names of the Kubernetes Secrets containing registry login
+//
+// information to resolve image metadata.
 func (d *ImageDie) SecretRef(v ...corev1.LocalObjectReference) *ImageDie {
 	return d.DieStamp(func(r *syncv1alpha1.Image) {
 		r.SecretRef = v
 	})
 }
 
-// ServiceAccountName is the name of the Kubernetes ServiceAccount used to authenticate the image pull if the service account has attached pull secrets. For more information: https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#add-imagepullsecrets-to-a-service-account
+// ServiceAccountName is the name of the Kubernetes ServiceAccount used to authenticate
+//
+// the image pull if the service account has attached pull secrets. For more information:
+//
+// https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#add-imagepullsecrets-to-a-service-account
 func (d *ImageDie) ServiceAccountName(v string) *ImageDie {
 	return d.DieStamp(func(r *syncv1alpha1.Image) {
 		r.ServiceAccountName = v
