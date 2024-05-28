@@ -507,13 +507,6 @@ func (d *ImageSyncSpecDie) SourceImage(v syncv1alpha1.Image) *ImageSyncSpecDie {
 	})
 }
 
-// IsBundleImage allows synchronizing bundle images.
-func (d *ImageSyncSpecDie) IsBundleImage(v bool) *ImageSyncSpecDie {
-	return d.DieStamp(func(r *syncv1alpha1.ImageSyncSpec) {
-		r.IsBundleImage = v
-	})
-}
-
 func (d *ImageSyncSpecDie) DestinationImage(v syncv1alpha1.Image) *ImageSyncSpecDie {
 	return d.DieStamp(func(r *syncv1alpha1.ImageSyncSpec) {
 		r.DestinationImage = v
@@ -942,5 +935,12 @@ func (d *ImageDie) ServiceAccountName(v string) *ImageDie {
 func (d *ImageDie) Insecure(v bool) *ImageDie {
 	return d.DieStamp(func(r *syncv1alpha1.Image) {
 		r.Insecure = v
+	})
+}
+
+// IsBundleImage allows synchronizing bundle images.
+func (d *ImageDie) IsBundleImage(v bool) *ImageDie {
+	return d.DieStamp(func(r *syncv1alpha1.Image) {
+		r.IsBundleImage = v
 	})
 }

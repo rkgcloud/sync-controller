@@ -25,6 +25,7 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
+// Image type defines the standard properties for an OCI Image and Repository
 type Image struct {
 	// Image is a reference to an image in a remote repository
 	// +required
@@ -44,16 +45,16 @@ type Image struct {
 	// Insecure allows connecting to a non-TLS HTTP container registry.
 	// +optional
 	Insecure bool `json:"insecure,omitempty"`
+
+	// IsBundleImage allows synchronizing bundle images.
+	// +optional
+	IsBundleImage bool `json:"isBundleImage,omitempty"`
 }
 
 // ImageSyncSpec defines the desired state of ImageSync
 type ImageSyncSpec struct {
 	// +required
 	SourceImage Image `json:"sourceImage,omitempty"`
-
-	// IsBundleImage allows synchronizing bundle images.
-	// +optional
-	IsBundleImage bool `json:"isBundleImage,omitempty"`
 
 	// +required
 	DestinationImage Image `json:"destinationImage,omitempty"`
