@@ -1,3 +1,7 @@
+carvel.dev/kapp v0.62.0 h1:RkI/TC2gnYionGOJqODq/H2F1eaWymtNbPRzHx9pOBU=
+carvel.dev/kapp v0.62.0/go.mod h1:vvL0to7zzCAZPIYv0kQK+uMHzumIIgDI6umNLoy1kNE=
+carvel.dev/ytt v0.49.0 h1:cKH4RltFgsxf9cPd4E16AcuPQ4MEz//eei5ycXuHGF4=
+carvel.dev/ytt v0.49.0/go.mod h1:8ytmTEAsjvkDfNNV3U4ex/DoumV4JqnkIgaZgxqPxNQ=
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.34.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.38.0/go.mod h1:990N+gfupTy94rShfmMCWGDn0LpTmnzTp2qbd1dvSRU=
@@ -551,14 +555,10 @@ github.com/vbatts/tar-split v0.11.5/go.mod h1:yZbwRsSeGjusneWgA781EKej9HF8vme8ok
 github.com/vito/go-interact v0.0.0-20171111012221-fa338ed9e9ec/go.mod h1:wPlfmglZmRWMYv/qJy3P+fK/UnoQB5ISk4txfNd9tDo=
 github.com/vito/go-interact v1.0.1 h1:O8xi8c93bRUv2Tb/v6HdiuGc+WnWt+AQzF74MOOdlBs=
 github.com/vito/go-interact v1.0.1/go.mod h1:HrdHSJXD2yn1MhlTwSIMeFgQ5WftiIorszVGd3S/DAA=
-github.com/vmware-tanzu/carvel-kapp v0.61.0 h1:BBRtZNoGFar0O2lIfofcidAerrOln8tcATyytq5OopQ=
-github.com/vmware-tanzu/carvel-kapp v0.61.0/go.mod h1:mJBWyXmRiill2rBLrj9JAMDYFkEFYX/wMRy/7vw+V8E=
 github.com/vmware-tanzu/carvel-kapp-controller v0.50.2 h1:/0iDxqCzQIDLhasdnx2Hw+iW5VbL2OenfHESbWOZ5fE=
 github.com/vmware-tanzu/carvel-kapp-controller v0.50.2/go.mod h1:dcE+zg3cMl6CWRWwA1K9I9x24wGF98wlsatz5UEfdFo=
 github.com/vmware-tanzu/carvel-vendir v0.36.0 h1:F9FNk2YysC6DlUDP2Nl2ynsv6JH8S0FYT4OK6HrRco0=
 github.com/vmware-tanzu/carvel-vendir v0.36.0/go.mod h1:rPGI/zItMK4QgLRpLix2aykoYufavHyKqqLTONXb2uE=
-github.com/vmware-tanzu/carvel-ytt v0.47.0 h1:iPJcZg2y00ozs5o9+ud3pfDJp2N84nGlibmecuX7jNY=
-github.com/vmware-tanzu/carvel-ytt v0.47.0/go.mod h1:Xarf0th61vX6VY07l3KBSi3uaMCQ2UyPPiCPiaVpHME=
 github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2/go.mod h1:UETIi67q53MR2AWcXfiuqkDkRtnGDLqkBTpCHuJHxtU=
 github.com/xlab/treeprint v1.2.0 h1:HzHnuAF1plUN2zGlAFHbSQP2qJ0ZAD3XF5XD7OesXRQ=
 github.com/xlab/treeprint v1.2.0/go.mod h1:gj5Gd3gPdKtR1ikdDK6fnFLdmIS0X30kTTuNd/WEJu0=
