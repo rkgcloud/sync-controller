@@ -17,7 +17,7 @@ type _ = syncv1alpha1.ImageSyncSpec
 type _ = syncv1alpha1.ImageSyncStatus
 
 // +die
-type _ = syncv1alpha1.Image
+type _ = syncv1alpha1.ImageSource
 
 func (d *ImageSyncStatusDie) ConditionsDie(conditions ...*diemetav1.ConditionDie) *ImageSyncStatusDie {
 	return d.DieStamp(func(r *syncv1alpha1.ImageSyncStatus) {
