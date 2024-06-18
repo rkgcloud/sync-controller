@@ -8,10 +8,10 @@ KO_PLATFORMS ?= linux/$(shell go env GOARCH)
 CONTROLLER_GEN ?= go run -modfile hack/go.mod sigs.k8s.io/controller-tools/cmd/controller-gen
 DIEGEN ?= go run -modfile hack/go.mod reconciler.io/dies/diegen
 GOIMPORTS ?= go run -modfile hack/go.mod golang.org/x/tools/cmd/goimports
-KAPP ?= go run -modfile hack/go.mod github.com/vmware-tanzu/carvel-kapp/cmd/kapp
+KAPP ?= go run -modfile hack/go.mod carvel.dev/kapp/cmd/kapp
 KO ?= go run -modfile hack/go.mod github.com/google/ko
 KUSTOMIZE ?= go run -modfile hack/go.mod sigs.k8s.io/kustomize/kustomize/v5
-YTT ?= go run -modfile hack/go.mod github.com/vmware-tanzu/carvel-ytt/cmd/ytt
+YTT ?= go run -modfile hack/go.mod carvel.dev/ytt/cmd/ytt
 
 
 # Setting SHELL to bash allows bash commands to be executed by recipes.
