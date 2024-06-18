@@ -25,8 +25,8 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-// Image type defines the standard properties for an OCI Image and Repository
-type Image struct {
+// ImageSource type defines the standard properties for the source OCI Image and Repository
+type ImageSource struct {
 	// Image is a reference to an image in a remote repository
 	// +required
 	Image string `json:"image"`
@@ -51,13 +51,25 @@ type Image struct {
 	IsBundleImage bool `json:"isBundleImage,omitempty"`
 }
 
+// ImageDestination type defines the standard properties for the destination OCI Image and Repository
+type ImageDestination struct {
+	// Image is a reference to an image in a remote repository
+	// +required
+	Image string `json:"image"`
+
+	// SecretRef contains the names of the Kubernetes Secrets containing registry login
+	// information to resolve image metadata.
+	// +optional
+	SecretRef []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
+}
+
 // ImageSyncSpec defines the desired state of ImageSync
 type ImageSyncSpec struct {
 	// +required
-	SourceImage Image `json:"sourceImage,omitempty"`
+	SourceImage ImageSource `json:"sourceImage,omitempty"`
 
 	// +required
-	DestinationImage Image `json:"destinationImage,omitempty"`
+	DestinationImage ImageDestination `json:"destinationImage,omitempty"`
 
 	// The timeout for remote OCI Repository operations like pulling, defaults to 60s.
 	// +kubebuilder:default="60s"

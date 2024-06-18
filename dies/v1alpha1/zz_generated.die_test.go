@@ -54,11 +54,11 @@ func TestImageSyncStatusDie_MissingMethods(t *testingx.T) {
 	}
 }
 
-func TestImageDie_MissingMethods(t *testingx.T) {
-	die := ImageBlank
+func TestImageSourceDie_MissingMethods(t *testingx.T) {
+	die := ImageSourceBlank
 	ignore := []string{}
 	diff := testing.DieFieldDiff(die).Delete(ignore...)
 	if diff.Len() != 0 {
-		t.Errorf("found missing fields for ImageDie: %s", diff.List())
+		t.Errorf("found missing fields for ImageSourceDie: %s", diff.List())
 	}
 }

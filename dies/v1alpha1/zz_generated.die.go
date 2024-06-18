@@ -573,56 +573,13 @@ func (d *ImageSyncSpecDie) DeepCopy() *ImageSyncSpecDie {
 	}
 }
 
-// DieSeal returns a new die for the current die's state that is sealed for comparison in future diff and patch operations.
-func (d *ImageSyncSpecDie) DieSeal() *ImageSyncSpecDie {
-	return d.DieSealFeed(d.r)
-}
-
-// DieSealFeed returns a new die for the current die's state that uses a specific resource for comparison in future diff and patch operations.
-func (d *ImageSyncSpecDie) DieSealFeed(r syncv1alpha1.ImageSyncSpec) *ImageSyncSpecDie {
-	if !d.mutable {
-		d = d.DeepCopy()
-	}
-	d.seal = *r.DeepCopy()
-	return d
-}
-
-// DieSealFeedPtr returns a new die for the current die's state that uses a specific resource pointer for comparison in future diff and patch operations. If the resource is nil, the empty value is used instead.
-func (d *ImageSyncSpecDie) DieSealFeedPtr(r *syncv1alpha1.ImageSyncSpec) *ImageSyncSpecDie {
-	if r == nil {
-		r = &syncv1alpha1.ImageSyncSpec{}
-	}
-	return d.DieSealFeed(*r)
-}
-
-// DieSealRelease returns the sealed resource managed by the die.
-func (d *ImageSyncSpecDie) DieSealRelease() syncv1alpha1.ImageSyncSpec {
-	return *d.seal.DeepCopy()
-}
-
-// DieSealReleasePtr returns the sealed resource pointer managed by the die.
-func (d *ImageSyncSpecDie) DieSealReleasePtr() *syncv1alpha1.ImageSyncSpec {
-	r := d.DieSealRelease()
-	return &r
-}
-
-// DieDiff uses cmp.Diff to compare the current value of the die with the sealed value.
-func (d *ImageSyncSpecDie) DieDiff(opts ...cmp.Option) string {
-	return cmp.Diff(d.seal, d.r, opts...)
-}
-
-// DiePatch generates a patch between the current value of the die and the sealed value.
-func (d *ImageSyncSpecDie) DiePatch(patchType types.PatchType) ([]byte, error) {
-	return patch.Create(d.seal, d.r, patchType)
-}
-
-func (d *ImageSyncSpecDie) SourceImage(v syncv1alpha1.Image) *ImageSyncSpecDie {
+func (d *ImageSyncSpecDie) SourceImage(v syncv1alpha1.ImageSource) *ImageSyncSpecDie {
 	return d.DieStamp(func(r *syncv1alpha1.ImageSyncSpec) {
 		r.SourceImage = v
 	})
 }
 
-func (d *ImageSyncSpecDie) DestinationImage(v syncv1alpha1.Image) *ImageSyncSpecDie {
+func (d *ImageSyncSpecDie) DestinationImage(v syncv1alpha1.ImageDestination) *ImageSyncSpecDie {
 	return d.DieStamp(func(r *syncv1alpha1.ImageSyncSpec) {
 		r.DestinationImage = v
 	})
@@ -883,16 +840,15 @@ func (d *ImageSyncStatusDie) LastSyncTime(v metav1.Time) *ImageSyncStatusDie {
 	})
 }
 
-var ImageBlank = (&ImageDie{}).DieFeed(syncv1alpha1.Image{})
+var ImageSourceBlank = (&ImageSourceDie{}).DieFeed(syncv1alpha1.ImageSource{})
 
-type ImageDie struct {
+type ImageSourceDie struct {
 	mutable bool
-	r       syncv1alpha1.Image
-	seal    syncv1alpha1.Image
+	r       syncv1alpha1.ImageSource
 }
 
 // DieImmutable returns a new die for the current die's state that is either mutable (`false`) or immutable (`true`).
-func (d *ImageDie) DieImmutable(immutable bool) *ImageDie {
+func (d *ImageSourceDie) DieImmutable(immutable bool) *ImageSourceDie {
 	if d.mutable == !immutable {
 		return d
 	}
@@ -902,12 +858,12 @@ func (d *ImageDie) DieImmutable(immutable bool) *ImageDie {
 }
 
 // DieFeed returns a new die with the provided resource.
-func (d *ImageDie) DieFeed(r syncv1alpha1.Image) *ImageDie {
+func (d *ImageSourceDie) DieFeed(r syncv1alpha1.ImageSource) *ImageSourceDie {
 	if d.mutable {
 		d.r = r
 		return d
 	}
-	return &ImageDie{
+	return &ImageSourceDie{
 		mutable: d.mutable,
 		r:       r,
 		seal:    d.seal,
@@ -915,16 +871,16 @@ func (d *ImageDie) DieFeed(r syncv1alpha1.Image) *ImageDie {
 }
 
 // DieFeedPtr returns a new die with the provided resource pointer. If the resource is nil, the empty value is used instead.
-func (d *ImageDie) DieFeedPtr(r *syncv1alpha1.Image) *ImageDie {
+func (d *ImageSourceDie) DieFeedPtr(r *syncv1alpha1.ImageSource) *ImageSourceDie {
 	if r == nil {
-		r = &syncv1alpha1.Image{}
+		r = &syncv1alpha1.ImageSource{}
 	}
 	return d.DieFeed(*r)
 }
 
 // DieFeedJSON returns a new die with the provided JSON. Panics on error.
-func (d *ImageDie) DieFeedJSON(j []byte) *ImageDie {
-	r := syncv1alpha1.Image{}
+func (d *ImageSourceDie) DieFeedJSON(j []byte) *ImageSourceDie {
+	r := syncv1alpha1.ImageSource{}
 	if err := json.Unmarshal(j, &r); err != nil {
 		panic(err)
 	}
@@ -932,8 +888,8 @@ func (d *ImageDie) DieFeedJSON(j []byte) *ImageDie {
 }
 
 // DieFeedYAML returns a new die with the provided YAML. Panics on error.
-func (d *ImageDie) DieFeedYAML(y []byte) *ImageDie {
-	r := syncv1alpha1.Image{}
+func (d *ImageSourceDie) DieFeedYAML(y []byte) *ImageSourceDie {
+	r := syncv1alpha1.ImageSource{}
 	if err := yaml.Unmarshal(y, &r); err != nil {
 		panic(err)
 	}
@@ -941,7 +897,7 @@ func (d *ImageDie) DieFeedYAML(y []byte) *ImageDie {
 }
 
 // DieFeedYAMLFile returns a new die loading YAML from a file path. Panics on error.
-func (d *ImageDie) DieFeedYAMLFile(name string) *ImageDie {
+func (d *ImageSourceDie) DieFeedYAMLFile(name string) *ImageSourceDie {
 	y, err := osx.ReadFile(name)
 	if err != nil {
 		panic(err)
@@ -950,7 +906,7 @@ func (d *ImageDie) DieFeedYAMLFile(name string) *ImageDie {
 }
 
 // DieFeedRawExtension returns the resource managed by the die as an raw extension. Panics on error.
-func (d *ImageDie) DieFeedRawExtension(raw runtime.RawExtension) *ImageDie {
+func (d *ImageSourceDie) DieFeedRawExtension(raw runtime.RawExtension) *ImageSourceDie {
 	j, err := json.Marshal(raw)
 	if err != nil {
 		panic(err)
@@ -959,7 +915,7 @@ func (d *ImageDie) DieFeedRawExtension(raw runtime.RawExtension) *ImageDie {
 }
 
 // DieRelease returns the resource managed by the die.
-func (d *ImageDie) DieRelease() syncv1alpha1.Image {
+func (d *ImageSourceDie) DieRelease() syncv1alpha1.ImageSource {
 	if d.mutable {
 		return d.r
 	}
@@ -967,13 +923,13 @@ func (d *ImageDie) DieRelease() syncv1alpha1.Image {
 }
 
 // DieReleasePtr returns a pointer to the resource managed by the die.
-func (d *ImageDie) DieReleasePtr() *syncv1alpha1.Image {
+func (d *ImageSourceDie) DieReleasePtr() *syncv1alpha1.ImageSource {
 	r := d.DieRelease()
 	return &r
 }
 
 // DieReleaseJSON returns the resource managed by the die as JSON. Panics on error.
-func (d *ImageDie) DieReleaseJSON() []byte {
+func (d *ImageSourceDie) DieReleaseJSON() []byte {
 	r := d.DieReleasePtr()
 	j, err := json.Marshal(r)
 	if err != nil {
@@ -983,7 +939,7 @@ func (d *ImageDie) DieReleaseJSON() []byte {
 }
 
 // DieReleaseYAML returns the resource managed by the die as YAML. Panics on error.
-func (d *ImageDie) DieReleaseYAML() []byte {
+func (d *ImageSourceDie) DieReleaseYAML() []byte {
 	r := d.DieReleasePtr()
 	y, err := yaml.Marshal(r)
 	if err != nil {
@@ -993,7 +949,7 @@ func (d *ImageDie) DieReleaseYAML() []byte {
 }
 
 // DieReleaseRawExtension returns the resource managed by the die as an raw extension. Panics on error.
-func (d *ImageDie) DieReleaseRawExtension() runtime.RawExtension {
+func (d *ImageSourceDie) DieReleaseRawExtension() runtime.RawExtension {
 	j := d.DieReleaseJSON()
 	raw := runtime.RawExtension{}
 	if err := json.Unmarshal(j, &raw); err != nil {
@@ -1003,7 +959,7 @@ func (d *ImageDie) DieReleaseRawExtension() runtime.RawExtension {
 }
 
 // DieStamp returns a new die with the resource passed to the callback function. The resource is mutable.
-func (d *ImageDie) DieStamp(fn func(r *syncv1alpha1.Image)) *ImageDie {
+func (d *ImageSourceDie) DieStamp(fn func(r *syncv1alpha1.ImageSource)) *ImageSourceDie {
 	r := d.DieRelease()
 	fn(&r)
 	return d.DieFeed(r)
@@ -1012,8 +968,8 @@ func (d *ImageDie) DieStamp(fn func(r *syncv1alpha1.Image)) *ImageDie {
 // Experimental: DieStampAt uses a JSON path (http://goessner.net/articles/JsonPath/) expression to stamp portions of the resource. The callback is invoked with each JSON path match. Panics if the callback function does not accept a single argument of the same type or a pointer to that type as found on the resource at the target location.
 //
 // Future iterations will improve type coercion from the resource to the callback argument.
-func (d *ImageDie) DieStampAt(jp string, fn interface{}) *ImageDie {
-	return d.DieStamp(func(r *syncv1alpha1.Image) {
+func (d *ImageSourceDie) DieStampAt(jp string, fn interface{}) *ImageSourceDie {
+	return d.DieStamp(func(r *syncv1alpha1.ImageSource) {
 		if ni := reflectx.ValueOf(fn).Type().NumIn(); ni != 1 {
 			panic(fmtx.Errorf("callback function must have 1 input parameters, found %d", ni))
 		}
@@ -1048,8 +1004,8 @@ func (d *ImageDie) DieStampAt(jp string, fn interface{}) *ImageDie {
 }
 
 // DieWith returns a new die after passing the current die to the callback function. The passed die is mutable.
-func (d *ImageDie) DieWith(fns ...func(d *ImageDie)) *ImageDie {
-	nd := ImageBlank.DieFeed(d.DieRelease()).DieImmutable(false)
+func (d *ImageSourceDie) DieWith(fns ...func(d *ImageSourceDie)) *ImageSourceDie {
+	nd := ImageSourceBlank.DieFeed(d.DieRelease()).DieImmutable(false)
 	for _, fn := range fns {
 		if fn != nil {
 			fn(nd)
@@ -1059,9 +1015,9 @@ func (d *ImageDie) DieWith(fns ...func(d *ImageDie)) *ImageDie {
 }
 
 // DeepCopy returns a new die with equivalent state. Useful for snapshotting a mutable die.
-func (d *ImageDie) DeepCopy() *ImageDie {
+func (d *ImageSourceDie) DeepCopy() *ImageSourceDie {
 	r := *d.r.DeepCopy()
-	return &ImageDie{
+	return &ImageSourceDie{
 		mutable: d.mutable,
 		r:       r,
 		seal:    d.seal,
@@ -1112,8 +1068,8 @@ func (d *ImageDie) DiePatch(patchType types.PatchType) ([]byte, error) {
 }
 
 // Image is a reference to an image in a remote repository
-func (d *ImageDie) Image(v string) *ImageDie {
-	return d.DieStamp(func(r *syncv1alpha1.Image) {
+func (d *ImageSourceDie) Image(v string) *ImageSourceDie {
+	return d.DieStamp(func(r *syncv1alpha1.ImageSource) {
 		r.Image = v
 	})
 }
@@ -1121,8 +1077,8 @@ func (d *ImageDie) Image(v string) *ImageDie {
 // SecretRef contains the names of the Kubernetes Secrets containing registry login
 //
 // information to resolve image metadata.
-func (d *ImageDie) SecretRef(v ...corev1.LocalObjectReference) *ImageDie {
-	return d.DieStamp(func(r *syncv1alpha1.Image) {
+func (d *ImageSourceDie) SecretRef(v ...corev1.LocalObjectReference) *ImageSourceDie {
+	return d.DieStamp(func(r *syncv1alpha1.ImageSource) {
 		r.SecretRef = v
 	})
 }
@@ -1132,22 +1088,22 @@ func (d *ImageDie) SecretRef(v ...corev1.LocalObjectReference) *ImageDie {
 // the image pull if the service account has attached pull secrets. For more information:
 //
 // https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#add-imagepullsecrets-to-a-service-account
-func (d *ImageDie) ServiceAccountName(v string) *ImageDie {
-	return d.DieStamp(func(r *syncv1alpha1.Image) {
+func (d *ImageSourceDie) ServiceAccountName(v string) *ImageSourceDie {
+	return d.DieStamp(func(r *syncv1alpha1.ImageSource) {
 		r.ServiceAccountName = v
 	})
 }
 
 // Insecure allows connecting to a non-TLS HTTP container registry.
-func (d *ImageDie) Insecure(v bool) *ImageDie {
-	return d.DieStamp(func(r *syncv1alpha1.Image) {
+func (d *ImageSourceDie) Insecure(v bool) *ImageSourceDie {
+	return d.DieStamp(func(r *syncv1alpha1.ImageSource) {
 		r.Insecure = v
 	})
 }
 
 // IsBundleImage allows synchronizing bundle images.
-func (d *ImageDie) IsBundleImage(v bool) *ImageDie {
-	return d.DieStamp(func(r *syncv1alpha1.Image) {
+func (d *ImageSourceDie) IsBundleImage(v bool) *ImageSourceDie {
+	return d.DieStamp(func(r *syncv1alpha1.ImageSource) {
 		r.IsBundleImage = v
 	})
 }
