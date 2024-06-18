@@ -6,7 +6,7 @@ toolchain go1.22.3
 
 require (
 	carvel.dev/kapp v0.62.1
-	carvel.dev/ytt v0.49.0
+	carvel.dev/ytt v0.49.1
 	github.com/google/ko v0.15.4
 	golang.org/x/tools v0.22.0
 	reconciler.io/dies/diegen v0.12.0
