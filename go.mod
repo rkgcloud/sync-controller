@@ -6,7 +6,7 @@ require (
 	carvel.dev/imgpkg v0.42.2
 	github.com/cppforlife/go-cli-ui v0.0.0-20220622150351-995494831c6c
 	github.com/go-logr/logr v1.4.2
-	github.com/google/go-containerregistry v0.19.2
+	github.com/google/go-containerregistry v0.20.0
 	github.com/google/go-containerregistry/pkg/authn/k8schain v0.0.0-20230822174451-190ad0e4d556
 	go.uber.org/zap v1.27.0
 	k8s.io/api v0.30.2
