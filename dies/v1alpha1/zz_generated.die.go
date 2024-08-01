@@ -22,18 +22,21 @@ limitations under the License.
 package v1alpha1
 
 import (
-	json "encoding/json"
 	fmtx "fmt"
 	osx "os"
 	reflectx "reflect"
 
+	cmp "github.com/google/go-cmp/cmp"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	unstructured "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
+	types "k8s.io/apimachinery/pkg/types"
+	json "k8s.io/apimachinery/pkg/util/json"
 	jsonpath "k8s.io/client-go/util/jsonpath"
 	v1 "reconciler.io/dies/apis/meta/v1"
+	patch "reconciler.io/dies/patch"
 	apis "reconciler.io/runtime/apis"
 	yaml "sigs.k8s.io/yaml"
 
@@ -46,6 +49,7 @@ type ImageSyncDie struct {
 	v1.FrozenObjectMeta
 	mutable bool
 	r       syncv1alpha1.ImageSync
+	seal    syncv1alpha1.ImageSync
 }
 
 // DieImmutable returns a new die for the current die's state that is either mutable (`false`) or immutable (`true`).
@@ -69,6 +73,7 @@ func (d *ImageSyncDie) DieFeed(r syncv1alpha1.ImageSync) *ImageSyncDie {
 		FrozenObjectMeta: v1.FreezeObjectMeta(r.ObjectMeta),
 		mutable:          d.mutable,
 		r:                r,
+		seal:             d.seal,
 	}
 }
 
@@ -235,7 +240,51 @@ func (d *ImageSyncDie) DeepCopy() *ImageSyncDie {
 		FrozenObjectMeta: v1.FreezeObjectMeta(r.ObjectMeta),
 		mutable:          d.mutable,
 		r:                r,
+		seal:             d.seal,
 	}
+}
+
+// DieSeal returns a new die for the current die's state that is sealed for comparison in future diff and patch operations.
+func (d *ImageSyncDie) DieSeal() *ImageSyncDie {
+	return d.DieSealFeed(d.r)
+}
+
+// DieSealFeed returns a new die for the current die's state that uses a specific resource for comparison in future diff and patch operations.
+func (d *ImageSyncDie) DieSealFeed(r syncv1alpha1.ImageSync) *ImageSyncDie {
+	if !d.mutable {
+		d = d.DeepCopy()
+	}
+	d.seal = *r.DeepCopy()
+	return d
+}
+
+// DieSealFeedPtr returns a new die for the current die's state that uses a specific resource pointer for comparison in future diff and patch operations. If the resource is nil, the empty value is used instead.
+func (d *ImageSyncDie) DieSealFeedPtr(r *syncv1alpha1.ImageSync) *ImageSyncDie {
+	if r == nil {
+		r = &syncv1alpha1.ImageSync{}
+	}
+	return d.DieSealFeed(*r)
+}
+
+// DieSealRelease returns the sealed resource managed by the die.
+func (d *ImageSyncDie) DieSealRelease() syncv1alpha1.ImageSync {
+	return *d.seal.DeepCopy()
+}
+
+// DieSealReleasePtr returns the sealed resource pointer managed by the die.
+func (d *ImageSyncDie) DieSealReleasePtr() *syncv1alpha1.ImageSync {
+	r := d.DieSealRelease()
+	return &r
+}
+
+// DieDiff uses cmp.Diff to compare the current value of the die with the sealed value.
+func (d *ImageSyncDie) DieDiff(opts ...cmp.Option) string {
+	return cmp.Diff(d.seal, d.r, opts...)
+}
+
+// DiePatch generates a patch between the current value of the die and the sealed value.
+func (d *ImageSyncDie) DiePatch(patchType types.PatchType) ([]byte, error) {
+	return patch.Create(d.seal, d.r, patchType)
 }
 
 var _ runtime.Object = (*ImageSyncDie)(nil)
@@ -254,15 +303,12 @@ func (d *ImageSyncDie) MarshalJSON() ([]byte, error) {
 }
 
 func (d *ImageSyncDie) UnmarshalJSON(b []byte) error {
-	if d == ImageSyncBlank {
-		return fmtx.Errorf("cannot unmarshal into the blank die, create a copy first")
-	}
 	if !d.mutable {
 		return fmtx.Errorf("cannot unmarshal into immutable dies, create a mutable version first")
 	}
-	r := &syncv1alpha1.ImageSync{}
-	err := json.Unmarshal(b, r)
-	*d = *d.DieFeed(*r)
+	resource := &syncv1alpha1.ImageSync{}
+	err := json.Unmarshal(b, resource)
+	*d = *d.DieFeed(*resource)
 	return err
 }
 
@@ -277,6 +323,29 @@ func (d *ImageSyncDie) APIVersion(v string) *ImageSyncDie {
 func (d *ImageSyncDie) Kind(v string) *ImageSyncDie {
 	return d.DieStamp(func(r *syncv1alpha1.ImageSync) {
 		r.Kind = v
+	})
+}
+
+// TypeMetadata standard object's type metadata.
+func (d *ImageSyncDie) TypeMetadata(v metav1.TypeMeta) *ImageSyncDie {
+	return d.DieStamp(func(r *syncv1alpha1.ImageSync) {
+		r.TypeMeta = v
+	})
+}
+
+// TypeMetadataDie stamps the resource's TypeMeta field with a mutable die.
+func (d *ImageSyncDie) TypeMetadataDie(fn func(d *v1.TypeMetaDie)) *ImageSyncDie {
+	return d.DieStamp(func(r *syncv1alpha1.ImageSync) {
+		d := v1.TypeMetaBlank.DieImmutable(false).DieFeed(r.TypeMeta)
+		fn(d)
+		r.TypeMeta = d.DieRelease()
+	})
+}
+
+// Metadata standard object's metadata.
+func (d *ImageSyncDie) Metadata(v metav1.ObjectMeta) *ImageSyncDie {
+	return d.DieStamp(func(r *syncv1alpha1.ImageSync) {
+		r.ObjectMeta = v
 	})
 }
 
@@ -324,6 +393,7 @@ var ImageSyncSpecBlank = (&ImageSyncSpecDie{}).DieFeed(syncv1alpha1.ImageSyncSpe
 type ImageSyncSpecDie struct {
 	mutable bool
 	r       syncv1alpha1.ImageSyncSpec
+	seal    syncv1alpha1.ImageSyncSpec
 }
 
 // DieImmutable returns a new die for the current die's state that is either mutable (`false`) or immutable (`true`).
@@ -345,6 +415,7 @@ func (d *ImageSyncSpecDie) DieFeed(r syncv1alpha1.ImageSyncSpec) *ImageSyncSpecD
 	return &ImageSyncSpecDie{
 		mutable: d.mutable,
 		r:       r,
+		seal:    d.seal,
 	}
 }
 
@@ -498,7 +569,51 @@ func (d *ImageSyncSpecDie) DeepCopy() *ImageSyncSpecDie {
 	return &ImageSyncSpecDie{
 		mutable: d.mutable,
 		r:       r,
+		seal:    d.seal,
 	}
+}
+
+// DieSeal returns a new die for the current die's state that is sealed for comparison in future diff and patch operations.
+func (d *ImageSyncSpecDie) DieSeal() *ImageSyncSpecDie {
+	return d.DieSealFeed(d.r)
+}
+
+// DieSealFeed returns a new die for the current die's state that uses a specific resource for comparison in future diff and patch operations.
+func (d *ImageSyncSpecDie) DieSealFeed(r syncv1alpha1.ImageSyncSpec) *ImageSyncSpecDie {
+	if !d.mutable {
+		d = d.DeepCopy()
+	}
+	d.seal = *r.DeepCopy()
+	return d
+}
+
+// DieSealFeedPtr returns a new die for the current die's state that uses a specific resource pointer for comparison in future diff and patch operations. If the resource is nil, the empty value is used instead.
+func (d *ImageSyncSpecDie) DieSealFeedPtr(r *syncv1alpha1.ImageSyncSpec) *ImageSyncSpecDie {
+	if r == nil {
+		r = &syncv1alpha1.ImageSyncSpec{}
+	}
+	return d.DieSealFeed(*r)
+}
+
+// DieSealRelease returns the sealed resource managed by the die.
+func (d *ImageSyncSpecDie) DieSealRelease() syncv1alpha1.ImageSyncSpec {
+	return *d.seal.DeepCopy()
+}
+
+// DieSealReleasePtr returns the sealed resource pointer managed by the die.
+func (d *ImageSyncSpecDie) DieSealReleasePtr() *syncv1alpha1.ImageSyncSpec {
+	r := d.DieSealRelease()
+	return &r
+}
+
+// DieDiff uses cmp.Diff to compare the current value of the die with the sealed value.
+func (d *ImageSyncSpecDie) DieDiff(opts ...cmp.Option) string {
+	return cmp.Diff(d.seal, d.r, opts...)
+}
+
+// DiePatch generates a patch between the current value of the die and the sealed value.
+func (d *ImageSyncSpecDie) DiePatch(patchType types.PatchType) ([]byte, error) {
+	return patch.Create(d.seal, d.r, patchType)
 }
 
 func (d *ImageSyncSpecDie) SourceImage(v syncv1alpha1.Image) *ImageSyncSpecDie {
@@ -525,6 +640,7 @@ var ImageSyncStatusBlank = (&ImageSyncStatusDie{}).DieFeed(syncv1alpha1.ImageSyn
 type ImageSyncStatusDie struct {
 	mutable bool
 	r       syncv1alpha1.ImageSyncStatus
+	seal    syncv1alpha1.ImageSyncStatus
 }
 
 // DieImmutable returns a new die for the current die's state that is either mutable (`false`) or immutable (`true`).
@@ -546,6 +662,7 @@ func (d *ImageSyncStatusDie) DieFeed(r syncv1alpha1.ImageSyncStatus) *ImageSyncS
 	return &ImageSyncStatusDie{
 		mutable: d.mutable,
 		r:       r,
+		seal:    d.seal,
 	}
 }
 
@@ -699,7 +816,51 @@ func (d *ImageSyncStatusDie) DeepCopy() *ImageSyncStatusDie {
 	return &ImageSyncStatusDie{
 		mutable: d.mutable,
 		r:       r,
+		seal:    d.seal,
 	}
+}
+
+// DieSeal returns a new die for the current die's state that is sealed for comparison in future diff and patch operations.
+func (d *ImageSyncStatusDie) DieSeal() *ImageSyncStatusDie {
+	return d.DieSealFeed(d.r)
+}
+
+// DieSealFeed returns a new die for the current die's state that uses a specific resource for comparison in future diff and patch operations.
+func (d *ImageSyncStatusDie) DieSealFeed(r syncv1alpha1.ImageSyncStatus) *ImageSyncStatusDie {
+	if !d.mutable {
+		d = d.DeepCopy()
+	}
+	d.seal = *r.DeepCopy()
+	return d
+}
+
+// DieSealFeedPtr returns a new die for the current die's state that uses a specific resource pointer for comparison in future diff and patch operations. If the resource is nil, the empty value is used instead.
+func (d *ImageSyncStatusDie) DieSealFeedPtr(r *syncv1alpha1.ImageSyncStatus) *ImageSyncStatusDie {
+	if r == nil {
+		r = &syncv1alpha1.ImageSyncStatus{}
+	}
+	return d.DieSealFeed(*r)
+}
+
+// DieSealRelease returns the sealed resource managed by the die.
+func (d *ImageSyncStatusDie) DieSealRelease() syncv1alpha1.ImageSyncStatus {
+	return *d.seal.DeepCopy()
+}
+
+// DieSealReleasePtr returns the sealed resource pointer managed by the die.
+func (d *ImageSyncStatusDie) DieSealReleasePtr() *syncv1alpha1.ImageSyncStatus {
+	r := d.DieSealRelease()
+	return &r
+}
+
+// DieDiff uses cmp.Diff to compare the current value of the die with the sealed value.
+func (d *ImageSyncStatusDie) DieDiff(opts ...cmp.Option) string {
+	return cmp.Diff(d.seal, d.r, opts...)
+}
+
+// DiePatch generates a patch between the current value of the die and the sealed value.
+func (d *ImageSyncStatusDie) DiePatch(patchType types.PatchType) ([]byte, error) {
+	return patch.Create(d.seal, d.r, patchType)
 }
 
 func (d *ImageSyncStatusDie) Status(v apis.Status) *ImageSyncStatusDie {
@@ -727,6 +888,7 @@ var ImageBlank = (&ImageDie{}).DieFeed(syncv1alpha1.Image{})
 type ImageDie struct {
 	mutable bool
 	r       syncv1alpha1.Image
+	seal    syncv1alpha1.Image
 }
 
 // DieImmutable returns a new die for the current die's state that is either mutable (`false`) or immutable (`true`).
@@ -748,6 +910,7 @@ func (d *ImageDie) DieFeed(r syncv1alpha1.Image) *ImageDie {
 	return &ImageDie{
 		mutable: d.mutable,
 		r:       r,
+		seal:    d.seal,
 	}
 }
 
@@ -901,7 +1064,51 @@ func (d *ImageDie) DeepCopy() *ImageDie {
 	return &ImageDie{
 		mutable: d.mutable,
 		r:       r,
+		seal:    d.seal,
 	}
+}
+
+// DieSeal returns a new die for the current die's state that is sealed for comparison in future diff and patch operations.
+func (d *ImageDie) DieSeal() *ImageDie {
+	return d.DieSealFeed(d.r)
+}
+
+// DieSealFeed returns a new die for the current die's state that uses a specific resource for comparison in future diff and patch operations.
+func (d *ImageDie) DieSealFeed(r syncv1alpha1.Image) *ImageDie {
+	if !d.mutable {
+		d = d.DeepCopy()
+	}
+	d.seal = *r.DeepCopy()
+	return d
+}
+
+// DieSealFeedPtr returns a new die for the current die's state that uses a specific resource pointer for comparison in future diff and patch operations. If the resource is nil, the empty value is used instead.
+func (d *ImageDie) DieSealFeedPtr(r *syncv1alpha1.Image) *ImageDie {
+	if r == nil {
+		r = &syncv1alpha1.Image{}
+	}
+	return d.DieSealFeed(*r)
+}
+
+// DieSealRelease returns the sealed resource managed by the die.
+func (d *ImageDie) DieSealRelease() syncv1alpha1.Image {
+	return *d.seal.DeepCopy()
+}
+
+// DieSealReleasePtr returns the sealed resource pointer managed by the die.
+func (d *ImageDie) DieSealReleasePtr() *syncv1alpha1.Image {
+	r := d.DieSealRelease()
+	return &r
+}
+
+// DieDiff uses cmp.Diff to compare the current value of the die with the sealed value.
+func (d *ImageDie) DieDiff(opts ...cmp.Option) string {
+	return cmp.Diff(d.seal, d.r, opts...)
+}
+
+// DiePatch generates a patch between the current value of the die and the sealed value.
+func (d *ImageDie) DiePatch(patchType types.PatchType) ([]byte, error) {
+	return patch.Create(d.seal, d.r, patchType)
 }
 
 // Image is a reference to an image in a remote repository
