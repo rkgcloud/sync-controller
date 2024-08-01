@@ -2,7 +2,7 @@ module github.com/rkgcloud/sync-controller/hack
 
 go 1.22.3
 require (
-	carvel.dev/kapp v0.63.1
+	carvel.dev/kapp v0.63.2
 	carvel.dev/ytt v0.50.0
 	github.com/google/ko v0.15.4
 	golang.org/x/tools v0.23.0
