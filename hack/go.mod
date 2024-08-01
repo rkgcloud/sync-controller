@@ -1,11 +1,10 @@
 module github.com/rkgcloud/sync-controller/hack
 
 go 1.22.0
-
-toolchain go1.22.3
+toolchain go1.22.4
 
 require (
-	carvel.dev/kapp v0.62.1
+	carvel.dev/kapp v0.63.1
 	carvel.dev/ytt v0.49.1
 	github.com/google/ko v0.15.4
 	golang.org/x/tools v0.22.0
@@ -16,6 +15,7 @@ require (
 )
 
 require (
+	carvel.dev/vendir v0.40.0 // indirect
 	cloud.google.com/go/compute v1.25.0 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
 	github.com/Azure/azure-sdk-for-go v68.0.0+incompatible // indirect
@@ -136,15 +136,14 @@ require (
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	github.com/spf13/afero v1.11.0 // indirect
 	github.com/spf13/cast v1.6.0 // indirect
-	github.com/spf13/cobra v1.8.0 // indirect
+	github.com/spf13/cobra v1.8.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/spf13/viper v1.18.2 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/titanous/rocacheck v0.0.0-20171023193734-afe73141d399 // indirect
 	github.com/vbatts/tar-split v0.11.5 // indirect
 	github.com/vito/go-interact v1.0.1 // indirect
-	github.com/vmware-tanzu/carvel-kapp-controller v0.50.2 // indirect
-	github.com/vmware-tanzu/carvel-vendir v0.36.0 // indirect
+	github.com/vmware-tanzu/carvel-kapp-controller v0.51.0 // indirect
 	github.com/xlab/treeprint v1.2.0 // indirect
 	go.mongodb.org/mongo-driver v1.14.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.49.0 // indirect
@@ -172,13 +171,15 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gotest.tools/v3 v3.1.0 // indirect
-	k8s.io/api v0.30.0 // indirect
-	k8s.io/apiextensions-apiserver v0.30.0 // indirect
-	k8s.io/apimachinery v0.30.0 // indirect
-	k8s.io/client-go v0.30.0 // indirect
-	k8s.io/component-helpers v0.29.3 // indirect
+	k8s.io/api v0.30.2 // indirect
+	k8s.io/apiextensions-apiserver v0.30.2 // indirect
+	k8s.io/apimachinery v0.30.2 // indirect
+	k8s.io/apiserver v0.30.2 // indirect
+	k8s.io/client-go v0.30.2 // indirect
+	k8s.io/component-helpers v0.30.2 // indirect
 	k8s.io/klog/v2 v2.120.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20240228011516-70dd3763d340 // indirect
+	k8s.io/kubernetes v1.30.2 // indirect
 	k8s.io/utils v0.0.0-20230726121419-3b25d923346b // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/kind v0.23.0 // indirect
