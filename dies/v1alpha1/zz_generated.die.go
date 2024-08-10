@@ -870,9 +870,9 @@ func (d *ImageSyncStatusDie) Status(v apis.Status) *ImageSyncStatusDie {
 }
 
 // URL is the destination link for the latest Artifact.
-func (d *ImageSyncStatusDie) URL(v string) *ImageSyncStatusDie {
+func (d *ImageSyncStatusDie) SyncedURL(v string) *ImageSyncStatusDie {
 	return d.DieStamp(func(r *syncv1alpha1.ImageSyncStatus) {
-		r.URL = v
+		r.SyncedURL = v
 	})
 }
 
@@ -1111,7 +1111,7 @@ func (d *ImageSourceDie) DiePatch(patchType types.PatchType) ([]byte, error) {
 	return patch.Create(d.seal, d.r, patchType)
 }
 
-// Image is a reference to an image in a remote repository
+// Image to URL of an image in a remote repository
 func (d *ImageSourceDie) Image(v string) *ImageSourceDie {
 	return d.DieStamp(func(r *syncv1alpha1.ImageSource) {
 		r.Image = v

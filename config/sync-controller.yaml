@@ -43,7 +43,7 @@ spec:
     - jsonPath: .spec.sourceImage.image
       name: Image
       type: string
-    - jsonPath: .spec.destinationImage.image
+    - jsonPath: .spec.destinationImage.repostoryURL
       name: URL
       type: string
     - jsonPath: .spec.isBundleImage
@@ -87,9 +87,6 @@ spec:
                 description: ImageDestination type defines the standard properties
                   for the destination OCI Image and Repository
                 properties:
-                  image:
-                    description: Image is a reference to an image in a remote repository
-                    type: string
                   imagePullSecrets:
                     description: |-
                       SecretRef contains the names of the Kubernetes Secrets containing registry login
@@ -113,15 +110,18 @@ spec:
                       type: object
                       x-kubernetes-map-type: atomic
                     type: array
+                  repostoryURL:
+                    description: RepositoryURL refers to an image repository
+                    type: string
                 required:
-                - image
+                - repostoryURL
                 type: object
               sourceImage:
                 description: ImageSource type defines the standard properties for
                   the source OCI Image and Repository
                 properties:
                   image:
-                    description: Image is a reference to an image in a remote repository
+                    description: Image to URL of an image in a remote repository
                     type: string
                   imagePullSecrets:
                     description: |-
@@ -253,7 +253,7 @@ spec:
                   was last processed by the controller.
                 format: int64
                 type: integer
-              url:
+              syncedUrl:
                 description: URL is the destination link for the latest Artifact.
                 type: string
             type: object
