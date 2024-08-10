@@ -250,7 +250,7 @@ func SynchronizeImageReconciler() reconcilers.SubReconciler[*syncv1alpha1.ImageS
 			confUI := ui.NewConfUI(ui.NewNoopLogger())
 			defer confUI.Flush()
 			cmd.NewCopyOptions(confUI)
-			dest, err := getRepository(resource.Spec.DestinationImage.Image)
+			dest, err := getRepository(resource.Spec.DestinationImage.RepositoryURL)
 			if err != nil {
 				return err
 			}
@@ -260,7 +260,7 @@ func SynchronizeImageReconciler() reconcilers.SubReconciler[*syncv1alpha1.ImageS
 					Bundle: resource.Spec.SourceImage.Image,
 				},
 				Concurrency: 5,
-				RepoDst:     resource.Spec.DestinationImage.Image,
+				RepoDst:     resource.Spec.DestinationImage.RepositoryURL,
 			}
 
 			err = imgpkgCopy.Run()
