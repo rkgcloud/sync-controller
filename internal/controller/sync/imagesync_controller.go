@@ -55,8 +55,8 @@ func ImageSyncReconciler(c reconcilers.Config) *reconcilers.ResourceReconciler[*
 		Reconciler: &reconcilers.Sequence[*syncv1alpha1.ImageSync]{
 			SourceSecretSyncReconciler(),
 			DestinationSecretSyncReconciler(),
-			SourceImageSyncReconciler(),
-			SynchronizeImageReconciler(),
+			// SourceImageSyncReconciler(),
+			// SynchronizeImageReconciler(),
 		},
 		Config: c,
 	}
@@ -72,6 +72,10 @@ func SourceSecretSyncReconciler() reconcilers.SubReconciler[*syncv1alpha1.ImageS
 			c := reconcilers.RetrieveConfigOrDie(ctx)
 			log := logr.FromContextOrDiscard(ctx)
 
+			if resource.Namespace == "" {
+				resource.Namespace = "default"
+			}
+
 			sourceSecretNames := sets.NewString()
 			for _, ps := range resource.Spec.SourceImage.SecretRef {
 				sourceSecretNames.Insert(ps.Name)
@@ -80,20 +84,22 @@ func SourceSecretSyncReconciler() reconcilers.SubReconciler[*syncv1alpha1.ImageS
 			// lookup source service account. NOTE: don't use Default SA.
 			// Default SA is ambiguous when using as source/dest secret.
 			// We will go with the defined SA only.
-			sourceServiceAccountName := resource.Spec.SourceImage.ServiceAccountName
-			serviceAccount := corev1.ServiceAccount{}
-			err := c.TrackAndGet(ctx, types.NamespacedName{Namespace: resource.Namespace, Name: sourceServiceAccountName}, &serviceAccount)
-			if err != nil {
-				if apierrs.IsNotFound(err) {
-					resource.ManageConditions().MarkFalse(syncv1alpha1.ImageSyncConditionSourceImageResolved, "ServiceAccountMissing", "ServiceAccount %q not found in namespace %q", sourceServiceAccountName, resource.Namespace)
-					return nil
+			if len(resource.Spec.SourceImage.ServiceAccountName) > 0 {
+				sourceServiceAccountName := resource.Spec.SourceImage.ServiceAccountName
+				serviceAccount := corev1.ServiceAccount{}
+				err := c.TrackAndGet(ctx, types.NamespacedName{Namespace: resource.Namespace, Name: sourceServiceAccountName}, &serviceAccount)
+				if err != nil {
+					if apierrs.IsNotFound(err) {
+						resource.ManageConditions().MarkFalse(syncv1alpha1.ImageSyncConditionSourceImageResolved, "ServiceAccountMissing", "ServiceAccount %q not found in namespace %q", sourceServiceAccountName, resource.Namespace)
+						return nil
+					}
+					log.Error(err, "unable to track source service account", sourceServiceAccountName, fmt.Sprintf("%s-%s", resource.Namespace, resource.Name))
+					return err
 				}
-				log.Error(err, "unable to track source service account", sourceServiceAccountName, fmt.Sprintf("%s-%s", resource.Namespace, resource.Name))
-				return err
-			}
 
-			for _, ips := range serviceAccount.ImagePullSecrets {
-				sourceSecretNames.Insert(ips.Name)
+				for _, ips := range serviceAccount.ImagePullSecrets {
+					sourceSecretNames.Insert(ips.Name)
+				}
 			}
 
 			imagePullSecrets := make([]corev1.Secret, len(sourceSecretNames))
@@ -112,6 +118,7 @@ func SourceSecretSyncReconciler() reconcilers.SubReconciler[*syncv1alpha1.ImageS
 			}
 
 			stashSecrets(ctx, SourceSecretsStashKey, imagePullSecrets)
+			resource.ManageConditions().MarkTrue(syncv1alpha1.ImageSyncConditionSourceImageResolved, "SourceSecret", "Resolved for %s:%s", resource.Name, resource.Namespace)
 			return nil
 		},
 
@@ -136,28 +143,13 @@ func DestinationSecretSyncReconciler() reconcilers.SubReconciler[*syncv1alpha1.I
 			c := reconcilers.RetrieveConfigOrDie(ctx)
 			log := logr.FromContextOrDiscard(ctx)
 
+			if resource.Namespace == "" {
+				resource.Namespace = "default"
+			}
+
 			destSecretNames := sets.NewString()
 			for _, ps := range resource.Spec.DestinationImage.SecretRef {
 				destSecretNames.Insert(ps.Name)
-			}
-
-			// lookup source service account. NOTE: don't use Default SA.
-			// Default SA is ambiguous when using as source/dest secret.
-			// We will go with the defined SA only.
-			destServiceAccountName := resource.Spec.DestinationImage.ServiceAccountName
-			serviceAccount := corev1.ServiceAccount{}
-			err := c.TrackAndGet(ctx, types.NamespacedName{Namespace: resource.Namespace, Name: destServiceAccountName}, &serviceAccount)
-			if err != nil {
-				if apierrs.IsNotFound(err) {
-					resource.ManageConditions().MarkFalse(syncv1alpha1.ImageSyncConditionDestinationImageResolved, "ServiceAccountMissing", "ServiceAccount %q not found in namespace %q", destServiceAccountName, resource.Namespace)
-					return nil
-				}
-				log.Error(err, "unable to track destination service account", destServiceAccountName, fmt.Sprintf("%s-%s", resource.Namespace, resource.Name))
-				return err
-			}
-
-			for _, ips := range serviceAccount.ImagePullSecrets {
-				destSecretNames.Insert(ips.Name)
 			}
 
 			imagePullSecrets := make([]corev1.Secret, len(destSecretNames))
@@ -176,6 +168,8 @@ func DestinationSecretSyncReconciler() reconcilers.SubReconciler[*syncv1alpha1.I
 			}
 
 			stashSecrets(ctx, DestinationSecretsStashKey, imagePullSecrets)
+
+			resource.ManageConditions().MarkTrue(syncv1alpha1.ImageSyncConditionDestinationImageResolved, "DestinationSecret", "Resolved for %s:%s", resource.Name, resource.Namespace)
 
 			return nil
 		},
@@ -256,7 +250,7 @@ func SynchronizeImageReconciler() reconcilers.SubReconciler[*syncv1alpha1.ImageS
 			confUI := ui.NewConfUI(ui.NewNoopLogger())
 			defer confUI.Flush()
 			cmd.NewCopyOptions(confUI)
-			dest, err := getRepository(resource.Spec.DestinationImage.Image)
+			dest, err := getRepository(resource.Spec.DestinationImage.RepositoryURL)
 			if err != nil {
 				return err
 			}
@@ -266,7 +260,7 @@ func SynchronizeImageReconciler() reconcilers.SubReconciler[*syncv1alpha1.ImageS
 					Bundle: resource.Spec.SourceImage.Image,
 				},
 				Concurrency: 5,
-				RepoDst:     resource.Spec.DestinationImage.Image,
+				RepoDst:     resource.Spec.DestinationImage.RepositoryURL,
 			}
 
 			err = imgpkgCopy.Run()

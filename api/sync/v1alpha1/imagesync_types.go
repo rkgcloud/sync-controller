@@ -22,18 +22,15 @@ import (
 	"reconciler.io/runtime/apis"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
-// Image type defines the standard properties for an OCI Image and Repository
-type Image struct {
-	// Image is a reference to an image in a remote repository
-	// +required
+// ImageSource type defines the standard properties for the source OCI Image and Repository
+type ImageSource struct {
+	// Image to URL of an image in a remote repository
+	// +kubebuilder:validation:Required
 	Image string `json:"image"`
 
 	// SecretRef contains the names of the Kubernetes Secrets containing registry login
 	// information to resolve image metadata.
-	// +optional
+	// +kubebuilder:validation:Optional
 	SecretRef []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 
 	// ServiceAccountName is the name of the Kubernetes ServiceAccount used to authenticate
@@ -43,21 +40,33 @@ type Image struct {
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
 	// Insecure allows connecting to a non-TLS HTTP container registry.
-	// +optional
+	// +kubebuilder:validation:Optional
 	Insecure bool `json:"insecure,omitempty"`
 
 	// IsBundleImage allows synchronizing bundle images.
-	// +optional
+	// +kubebuilder:default:False
 	IsBundleImage bool `json:"isBundleImage,omitempty"`
+}
+
+// ImageDestination type defines the standard properties for the destination OCI Image and Repository
+type ImageDestination struct {
+	// RepositoryURL refers to an image repository
+	// +kubebuilder:validation:Required
+	RepositoryURL string `json:"repostoryURL"`
+
+	// SecretRef contains the names of the Kubernetes Secrets containing registry login
+	// information to resolve image metadata.
+	// +kubebuilder:validation:Optional
+	SecretRef []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 }
 
 // ImageSyncSpec defines the desired state of ImageSync
 type ImageSyncSpec struct {
-	// +required
-	SourceImage Image `json:"sourceImage,omitempty"`
+	// +kubebuilder:validation:Required
+	SourceImage ImageSource `json:"sourceImage,omitempty"`
 
-	// +required
-	DestinationImage Image `json:"destinationImage,omitempty"`
+	// +kubebuilder:validation:Required
+	DestinationImage ImageDestination `json:"destinationImage,omitempty"`
 
 	// The timeout for remote OCI Repository operations like pulling, defaults to 60s.
 	// +kubebuilder:default="60s"
@@ -69,14 +78,10 @@ type ImageSyncSpec struct {
 
 // ImageSyncStatus defines the observed state of ImageSync
 type ImageSyncStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
 	apis.Status `json:",inline"`
 
 	// URL is the destination link for the latest Artifact.
-	// +optional
-	URL string `json:"url,omitempty"`
+	SyncedURL string `json:"syncedUrl,omitempty"`
 
 	// LastSyncTime to the destination repository
 	LastSyncTime metav1.Time `json:"lastSyncTime,omitempty"`
@@ -85,7 +90,7 @@ type ImageSyncStatus struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 //+kubebuilder:printcolumn:name="Image",type=string,JSONPath=`.spec.sourceImage.image`
-//+kubebuilder:printcolumn:name="URL",type=string,JSONPath=`.spec.destinationImage.image`
+//+kubebuilder:printcolumn:name="URL",type=string,JSONPath=`.spec.destinationImage.repostoryURL`
 //+kubebuilder:printcolumn:name="Bundle",type=boolean,JSONPath=`.spec.isBundleImage`
 //+kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 //+kubebuilder:printcolumn:name="Reason",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].reason`

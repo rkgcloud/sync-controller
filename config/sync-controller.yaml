@@ -43,7 +43,7 @@ spec:
     - jsonPath: .spec.sourceImage.image
       name: Image
       type: string
-    - jsonPath: .spec.destinationImage.image
+    - jsonPath: .spec.destinationImage.repostoryURL
       name: URL
       type: string
     - jsonPath: .spec.isBundleImage
@@ -84,12 +84,9 @@ spec:
             description: ImageSyncSpec defines the desired state of ImageSync
             properties:
               destinationImage:
-                description: Image type defines the standard properties for an OCI
-                  Image and Repository
+                description: ImageDestination type defines the standard properties
+                  for the destination OCI Image and Repository
                 properties:
-                  image:
-                    description: Image is a reference to an image in a remote repository
-                    type: string
                   imagePullSecrets:
                     description: |-
                       SecretRef contains the names of the Kubernetes Secrets containing registry login
@@ -113,28 +110,18 @@ spec:
                       type: object
                       x-kubernetes-map-type: atomic
                     type: array
-                  insecure:
-                    description: Insecure allows connecting to a non-TLS HTTP container
-                      registry.
-                    type: boolean
-                  isBundleImage:
-                    description: IsBundleImage allows synchronizing bundle images.
-                    type: boolean
-                  serviceAccountName:
-                    description: |-
-                      ServiceAccountName is the name of the Kubernetes ServiceAccount used to authenticate
-                      the image pull if the service account has attached pull secrets. For more information:
-                      https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#add-imagepullsecrets-to-a-service-account
+                  repostoryURL:
+                    description: RepositoryURL refers to an image repository
                     type: string
                 required:
-                - image
+                - repostoryURL
                 type: object
               sourceImage:
-                description: Image type defines the standard properties for an OCI
-                  Image and Repository
+                description: ImageSource type defines the standard properties for
+                  the source OCI Image and Repository
                 properties:
                   image:
-                    description: Image is a reference to an image in a remote repository
+                    description: Image to URL of an image in a remote repository
                     type: string
                   imagePullSecrets:
                     description: |-
@@ -266,7 +253,7 @@ spec:
                   was last processed by the controller.
                 format: int64
                 type: integer
-              url:
+              syncedUrl:
                 description: URL is the destination link for the latest Artifact.
                 type: string
             type: object
