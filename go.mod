@@ -3,7 +3,7 @@ module github.com/rkgcloud/sync-controller
 go 1.22.5
 
 require (
-	carvel.dev/imgpkg v0.43.0
+	carvel.dev/imgpkg v0.43.1
 	github.com/cppforlife/go-cli-ui v0.0.0-20220622150351-995494831c6c
 	github.com/go-logr/logr v1.4.2
 	github.com/google/go-cmp v0.6.0
