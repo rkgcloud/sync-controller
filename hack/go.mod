@@ -5,7 +5,7 @@ go 1.22.5
 toolchain go1.22.6
 
 require (
-	carvel.dev/kapp v0.63.2
+	carvel.dev/kapp v0.63.3
 	carvel.dev/ytt v0.50.0
 	github.com/google/ko v0.16.0
 	golang.org/x/tools v0.24.0
